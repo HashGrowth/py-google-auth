@@ -18,17 +18,18 @@ Response:
 _status codes_:
 
 * success : 200
-* tfa : 300
-* connection error : 501
-* parsing error : 502
+* tfa : 303
+* connection error : 504
+* parsing error : 500
+* Invalid credentials: 401
 * default_method not available : 503
-* list of methods not available : 504
+* list of methods not available : 502
 
 _data_:
 
 * **success** - 'session': session
 * **tfa** - 'session': session, 'default_method': default_method_code, 'available_methods': available_methods
-* **error** - 'session': session
+* **error** - No data
 * **default_method not available** - 'session': session, 'available_methods': available_methods
 * **list of methods not available** - 'session': session, 'default_method': default_method_code
 
@@ -55,11 +56,11 @@ Response:
 _status codes_:
 
 * success : 200
-* connection error : 501
-* parsing error : 502
-* wrong otp error : 503
-* prompt denied : 505
-* time out : 506
+* connection error : 504
+* parsing error : 500
+* wrong otp error : 406
+* prompt denied : 412
+* time out : 408
 
 
 ### Alternate Method Selection
@@ -75,5 +76,5 @@ Response:
 _status codes_:
 
 * success : 200
-* connection error : 501
-* parsing error : 502
+* connection error : 504
+* parsing error : 500
