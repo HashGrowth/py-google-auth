@@ -25,9 +25,9 @@ def get_payload_for_select_page(form_html, form_key):
     inputs = forms[form_key].find_all('input')
 
     # create a payload dictionary
-    for u in inputs:
-        if u.has_attr('value') and u.has_attr('name'):
-            payload[u['name']] = u['value']
+    for item in inputs:
+        if item.has_attr('value') and item.has_attr('name'):
+            payload[item['name']] = item['value']
 
     return payload
 

@@ -57,7 +57,9 @@ class NormalLogin(object):
                 # save current response url and payload for next request
                 payload = utils.make_payload(response.text)
 
-                if default_method == '1':
+                if default_method == 1:
+                    # these are the parameters used for making call to google api where google
+                    # prompt's response is recorded.
                     query_params = utils.get_query_params(response.text)
                     session.q_params = query_params
 

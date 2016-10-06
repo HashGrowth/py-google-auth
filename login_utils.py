@@ -1,8 +1,6 @@
 import os
 import requests
 
-from bs4 import BeautifulSoup
-
 import utils
 
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
@@ -74,7 +72,7 @@ def get_default_method(resp_page):
     # select method based on the text from response page.
 
     if "prompt to sign in" in resp_page:
-        method = methods[2][0]
+        method = 1
 
     else:
         try:

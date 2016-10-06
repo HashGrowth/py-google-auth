@@ -18,13 +18,14 @@ def two_step_login_with_prompt(session, payload, q_params, url_to_challenge_sign
     `url_to_challenge_signin`: the url to make final call to verify request status
     and allow/deny login.
     `await_url`: url to make a POST call to check if a user responded on prompt.
-    `q_params`: These are two query parameters used to call `await_url`.
+    `q_params`: These are two parameters, one a query parameter and the other a payload item;
+    used to call `await_url`.
     `payload`: payload to send with POST request, i.e. cookies, tokens etc. more details in
     `utils.make_payload` function.
     '''
     error = None
 
-    await_url = "https://content.googleapis.com/cryptauth/v1/authzen/awaittx?alt=json&key="
+    await_url = "https://content.googleapis.com/cryptauth/v1/authzen/awaittx?alt=json&key=%s"
 
     # headers are necessary to specify the referer and content type else request fails.
     headers = {"Referer": url_to_challenge_signin, "Content-Type": "application/json"}
@@ -33,7 +34,7 @@ def two_step_login_with_prompt(session, payload, q_params, url_to_challenge_sign
 
     try:
         # make call to wait for user response
-        reply_from_user = session.post(await_url + key, headers=headers,
+        reply_from_user = session.post(await_url % key, headers=headers,
                                        data=json.dumps({"txId": txId}))
 
     except(requests.exceptions.ConnectionError):

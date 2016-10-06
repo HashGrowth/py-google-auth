@@ -61,12 +61,12 @@ def make_payload(page):
     payload = {}
 
     # collect all inputs from the form, these contains the parameters for payload.
-    soup_login = BeautifulSoup(page).find('form').find_all('input')
+    input_elements = BeautifulSoup(page).find('form').find_all('input')
 
     # create a payload dictionary
-    for u in soup_login:
-        if u.has_attr('value') and u.has_attr('name'):
-            payload[u['name']] = u['value']
+    for item in input_elements:
+        if item.has_attr('value') and item.has_attr('name'):
+            payload[item['name']] = item['value']
 
     return payload
 
@@ -121,7 +121,11 @@ def get_query_params(page):
     # get the key and id to make call to `await_url`
     soup = BeautifulSoup(page)
     div_with_key_id = soup.find('div', class_='LJtPoc')
+
+    # this is a query parameter sent with `await_url` in `step_two_utils.login_with_prompt` method.
     key = div_with_key_id.get('data-api-key')
+
+    # a payload item sent in POST request to `await_url`.
     txId = div_with_key_id.get('data-tx-id')
 
     return {'key': key, 'txId': txId}
