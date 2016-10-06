@@ -54,23 +54,7 @@ def select_alternate_method(session, current_form_page_url):
         error = "Connection Error"
         return None, None, error, session
 
-    try:
-        soup = BeautifulSoup(login_html.text)
-
-        # the html elemnets containing method names
-        method_spans = soup.find_all('span', class_="mSMaIe")
-
-        available_methods = []
-        for item in method_spans:
-            available_methods.append(item.text)
-
-    except:
-        f = open(log_dir+"select_method_form_log.html", 'w')
-        f.write(login_html.text)
-        f.close()
-
-        error = "Parsing Error"
-        return None, None, error, session
+    available_methods, error = utils.get_available_methods(login_html.text)
 
     return available_methods, select_method_page.url, error, session
 

@@ -168,10 +168,52 @@ class StepTwoLogin(object):
         resp.body = json.dumps({'session': session})
 
 
+@falcon.before(validate_request)
 class ChangeMethod(object):
     '''
     Handle changing the two factor method.
     '''
-    def on_get(self, req, resp):
-        resp.status = falcon.HTTP_200
-        resp.body = 'success'
+    def on_post(self, req, resp):
+        data = req.stream
+
+        method = data['method']
+        session = data['session']
+
+        # deserialize session dictionary and make it a session object
+        session = utils.deserialize_session(session)
+
+        select_method_url = session.select_method_url
+        session = utils.clean_session(session)
+
+        # get response from the page after making a selection of method
+        response, error, session = change_method_utils.get_alternate_method(session, method,
+                                                                            select_method_url)
+        # data to send back
+        data = {}
+
+        if error:
+            if error == "Connection Error":
+                resp.status = falcon.HTTP_504
+
+            elif error == "Parsing Error":
+                resp.status = falcon.HTTP_500
+        else:
+            # get the method code
+            method = change_method_utils.get_method_for_selection(method)
+
+            # url to make next session call to
+            session.next_url = response.url
+
+            # payload for next request
+            payload = utils.make_payload(response.text)
+            session.prev_payload = payload
+
+            data['method'] = method
+
+            resp.status = falcon.HTTP_200
+
+        # encode session as json
+        session = utils.serialize_session(session)
+        data['session'] = session
+
+        resp.body = json.dumps(data)

@@ -85,6 +85,33 @@ def get_method_names():
     return methods
 
 
+def get_available_methods(page):
+    '''
+    It collects all the available mthods for two factor auth from the form for select method.
+    '''
+
+    available_methods = []
+    error = None
+
+    try:
+        soup = BeautifulSoup(page)
+
+        # the html elemnets containing method names
+        method_spans = soup.find_all('span', class_="mSMaIe")
+
+        for item in method_spans:
+            available_methods.append(item.text)
+
+    except:
+        f = open(log_dir+"select_method_form_log.html", 'w')
+        f.write(page)
+        f.close()
+
+        error = "Parsing Error"
+
+    return available_methods, error
+
+
 def get_query_params(page):
     '''
     These parameters are required in Google Prompt method.
