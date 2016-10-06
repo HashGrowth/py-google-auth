@@ -28,7 +28,7 @@ An api to log into a user's Google account using their email and password.
 
 * Run API server in a seperate terminal        
 
-        gunicorn -b localhost:8001 app
+        gunicorn -b localhost:8001 app:app
 
 ## End points
 
