@@ -3,17 +3,50 @@
 ## Introduction
 An api to log into a user's Google account using their email and password.
 
+## Set up for testing
+
+* Create Virtual Environment  
+(_Note: Make sure you have python [virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/) and [virtualenvwrapper](http://docs.python-guide.org/en/latest/dev/virtualenvs/) installed_)        
+
+        mkvirtualenv -p `which python3.4` py-google-auth
+
+* Clone the repository        
+
+        git clone https://github.com/HashGrowth/py-google-auth.git py-google-auth
+
+* Install requirements        
+
+        pip install -r requirements.txt
+
+* Set an environment variable for logs, run this on terminal        
+
+        "export PY_GOOGLE_AUTH_LOG_PATH=/path/to/logs" >> ~/.bashrc
+
+* Set an access token for API        
+
+        "export PY_GOOGLE_AUTH_TOKEN='some_token'" >> ~/.bashrc
+
+* Run API server in a seperate terminal        
+
+        gunicorn -b localhost:8001 app
+
 ## End points
+
+**_Note:_**: _`token` with every request is the same as the value of `$PY_GOOGLE_AUTH_TOKEN`_
 
 ### Normal login
 
 Request:    
 
-    POST '/api/login' --data={'token': token, 'email': email, 'password': password}
+    resp = requests.post('http://localhost:8001/login', data=json.dumps({"token": token, "email": email, "password": password}))
 
 Response:    
 
-    response = {'status': status_code, data}
+    response = resp.json()
+
+response structure:    
+
+    response = data
 
 _status codes_:
 
@@ -21,17 +54,17 @@ _status codes_:
 * tfa : 303
 * connection error : 504
 * parsing error : 500
-* Invalid credentials: 401
+* Invalid credentials: 400
 * default_method not available : 503
 * list of methods not available : 502
 
 _data_:
 
-* **success** - 'session': session
-* **tfa** - 'session': session, 'default_method': default_method_code, 'available_methods': available_methods
+* **success** - {'session': session}
+* **tfa** - {'session': session, 'default_method': default_method_code, 'available_methods': available_methods}
 * **error** - No data
-* **default_method not available** - 'session': session, 'available_methods': available_methods
-* **list of methods not available** - 'session': session, 'default_method': default_method_code
+* **default_method not available** - {'session': session, 'available_methods': available_methods}
+* **list of methods not available** - {'session': session, 'default_method': default_method_code}
 
 _Default Method Codes_:
 
@@ -47,11 +80,15 @@ _Default Method Codes_:
 
 Request:    
 
-    POST '/api/step_two_login' --data={'token': token, 'session': session, 'otp': otp, 'method': method}
+    resp = requests.post('http://localhost:8001/step_two_login', data=json.dumps({"token": token, "method": method, "otp": otp, "session": session}))
 
 Response:    
 
-    response = {'status': status_code, 'session': session}
+    response = resp.json()
+
+response structure:    
+
+    response = {'session': session}
 
 _status codes_:
 
@@ -67,11 +104,15 @@ _status codes_:
 
 Request:    
 
-    POST '/api/change_method' --data={'token': token, 'session': session, 'method': method}
+    resp = requests.post('http://localhost:8001/change_method', data=json.dumps({"token": token, "method": method, "session": session}))
 
 Response:    
 
-    response = {'status': status_code, 'session': session}
+    response = resp.json()
+
+response structure:    
+
+    response = {'session': session}
 
 _status codes_:
 
