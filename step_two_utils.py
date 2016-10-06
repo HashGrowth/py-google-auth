@@ -4,7 +4,7 @@ import requests
 
 import utils
 
-log_dir = os.environ.get('LOG_DIR')
+log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
 def two_step_login_with_prompt(session, payload, q_params, url_to_challenge_signin):

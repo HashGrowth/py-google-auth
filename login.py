@@ -1,21 +1,47 @@
 import falcon
 import json
 import jsonpickle
+import os
 
 import utils
 import login_utils
 import step_two_utils
+import change_method_utils
 
 
+def validate_request(req, resp, resource, params):
+    '''
+    Method to validate token before processing request.
+    '''
+    # parse data
+    body = req.stream.read()
+    data = json.loads(body.decode('utf-8'))
+
+    # token to grant access
+    valid_token = os.environ.get('PY_GOOGLE_AUTH_TOKEN')
+
+    if 'token' not in data:
+        msg = 'Please send access token along with your request'
+        raise falcon.HTTPUnauthorized('Token Required', msg, valid_token)
+    else:
+        req_token = data['token']
+
+        if req_token != valid_token:
+            msg = 'Please supply a valid token.'
+            raise falcon.HTTPUnauthorized('Invalid Token', msg, valid_token)
+
+    req.stream = data
+
+
+@falcon.before(validate_request)
 class NormalLogin(object):
     '''
     Handles initial login request.
     '''
     def on_post(self, req, resp):
 
-        # parse data
-        body = req.stream.read()
-        data = json.loads(body.decode('utf-8'))
+        data = req.stream
+
         email = data['email']
         password = data['password']
 
@@ -76,7 +102,7 @@ class NormalLogin(object):
             resp.status = falcon.HTTP_500
 
         elif error and error == "Invalid credentials":
-            resp.status = falcon.HTTP_401
+            resp.status = falcon.HTTP_400
 
         elif error and error == "captcha":
             pass
@@ -90,13 +116,13 @@ class NormalLogin(object):
             resp.body = json.dumps({'session': session})
 
 
+@falcon.before(validate_request)
 class StepTwoLogin(object):
     '''
     Handles two factor authentication.
     '''
     def on_post(self, req, resp):
-        body = req.stream.read()
-        data = json.loads(body.decode('utf-8'))
+        data = req.stream
 
         method = data['method']
         session = data['session']

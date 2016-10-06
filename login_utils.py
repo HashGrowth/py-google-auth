@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 import utils
 
-log_dir = os.environ.get('LOG_DIR')
+log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
 def select_alternate_method(session, current_form_page_url):

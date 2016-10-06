@@ -1,7 +1,10 @@
+import os
 import jsonpickle
 import requests
 
 from bs4 import BeautifulSoup
+
+log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
 def serialize_session(session):
