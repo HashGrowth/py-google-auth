@@ -2,35 +2,36 @@ import json
 import os
 import requests
 
-import utils
-
+# directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
-def two_step_login_with_prompt(session, payload, q_params, url_to_challenge_signin):
+def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_signin):
     '''
     Method for two step authentication with Google prompt.
-    Collects a key and txId from the `form_html` to create a payload to send to next page,
-    which awaits use confirmation from prompt.
+    Collects a key and txId from the query_params` to create a payload to send to next page,
+    which awaits user confirmation from prompt.
     When User confirms, it makes a POST call to final challenge url to verify the request.
-    If request was accepted, it returns the google play home page with user logged in.
+    If request was accepted, it returns the requested google service page with user logged in.
 
+    `session`: requests.Session object.
     `url_to_challenge_signin`: the url to make final call to verify request status
     and allow/deny login.
-    `await_url`: url to make a POST call to check if a user responded on prompt.
-    `q_params`: These are two parameters, one a query parameter and the other a payload item;
+    `query_params`: These are two parameters, one a query parameter and the other a payload item;
     used to call `await_url`.
     `payload`: payload to send with POST request, i.e. cookies, tokens etc. more details in
     `utils.make_payload` function.
     '''
     error = None
 
+    # url to make a POST call to check if a user responded on prompt.
     await_url = "https://content.googleapis.com/cryptauth/v1/authzen/awaittx?alt=json&key=%s"
 
     # headers are necessary to specify the referer and content type else request fails.
     headers = {"Referer": url_to_challenge_signin, "Content-Type": "application/json"}
-    key = q_params['key']
-    txId = q_params['txId']
+
+    key = query_params['key']
+    txId = query_params['txId']
 
     try:
         # make call to wait for user response
@@ -41,9 +42,10 @@ def two_step_login_with_prompt(session, payload, q_params, url_to_challenge_sign
         error = "Connection Error"
         return None, error, session
 
+    # convert response to json.
     reply_json = json.loads(reply_from_user.content.decode('utf-8'))
 
-    # if request was not appropriate
+    # if request was not appropriate, log the response for further debugging.
     if 'error' in reply_json and reply_json['error']['code'] == 500:
         # log the error
         f = open(log_dir + "request_to_await_url_log.html", 'w')
@@ -85,13 +87,10 @@ def two_step_login_with_prompt(session, payload, q_params, url_to_challenge_sign
 def two_step_login_with_authenticator(session, payload, url_to_challenge_signin, code):
     '''
     Method for two step authentication with Google Authenticator.
-    It makes a GET to the page where user's asked to enter the code.
-    Collects data from the login page and
-    post to next page with the code generated on user's authenticator app.
+    it makes a POST to url_to_challenge_signin with the code generated on user's authenticator app.
 
+    `code`: generated in user;s Google Authenticator app.
     `url_to_challenge_signin`: the url to post otp and other data to authenticate.
-    `form_html`: It is the page which comes after submitting the password. This page contains
-    payload fields for Google Authenticator method.
     `payload`: payload to send with POST request, i.e. cookies, tokens etc. more details in
     `utils.make_payload` function.
     '''
@@ -114,11 +113,9 @@ def two_step_login_with_authenticator(session, payload, url_to_challenge_signin,
 def two_step_login_with_text_msg(session, payload, url_to_challenge_signin, otp):
     '''
     Method for two step authentication using text message.
-    Collects data from the login page and post to next page with the OTP received on user's device.
 
+    `otp`: otp sent to user's mobile number.
     `url_to_challenge_signin`: the url to post otp and other data to.
-    `form_html`: It is the page which comes after submitting the password. This page contains
-    payload fields for text msg method.
     `payload`: payload to send with POST request, i.e. cookies, tokens etc. more details in
     `utils.make_payload` function.
     '''
@@ -156,11 +153,9 @@ def two_step_login_with_text_msg(session, payload, url_to_challenge_signin, otp)
 def two_step_login_with_backup_code(session, payload, url_to_challenge_signin, code):
     '''
     Method for two step authentication with backup codes.
-    Collects data from the login page and post to next page with the backup code received from user
 
+    `code`: backup code
     `url_to_challenge_signin`: the url to post otp and other data to.
-    `form_html`: It is the page which comes after submitting the password. This page contains
-    payload fields for backup code method.
     `payload`: payload to send with POST request, i.e. cookies, tokens etc. more details in
     `utils.make_payload` function.
     '''
@@ -179,21 +174,19 @@ def two_step_login_with_backup_code(session, payload, url_to_challenge_signin, c
     return resp_page, error, session
 
 
-def second_step_login(session, method, url, payload, q_params, otp):
+def second_step_login(session, method, url, payload, query_params, otp):
     '''
-    4. Calls appropriate funtions based upon the method selected from previous function.
+    Calls appropriate funtions based upon the two factor method.
     '''
 
     error = None
-
-    methods = utils.get_method_names()
 
     # the url to make POST request to send otp to user
     url_to_challenge_signin = url.split('?')[0]
 
     # login with Google prompt
     if method == 1:
-        resp_page, error, session = two_step_login_with_prompt(session, payload, q_params,
+        resp_page, error, session = two_step_login_with_prompt(session, payload, query_params,
                                                                url_to_challenge_signin)
 
         # if user does not respond
@@ -214,9 +207,13 @@ def second_step_login(session, method, url, payload, q_params, otp):
     elif method == 4:
         resp_page, error, session = two_step_login_with_backup_code(session, payload,
                                                                     url_to_challenge_signin, otp)
-        if resp_page and "Wrong code. Try again." in resp_page.text:
-            error = "Wrong Code"
+    if resp_page and "Wrong code. Try again." in resp_page.text:
+        error = "Wrong Code"
 
+    if resp_page and "Enter a code" in resp_page.text:
+        error = "Empty Code"
+
+    # If user denies prompt login.
     if resp_page and "you canceled it" in resp_page.text:
         error = "Prompt Denied"
 

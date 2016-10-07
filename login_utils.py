@@ -3,12 +3,16 @@ import requests
 
 import utils
 
+# directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
 def select_alternate_method(session, current_form_page_url):
     '''
-    5. Find the list of available methods on a google account for TFA.
+    Find the list of enabled methods on a google account for TFA.
+    `session`: requests.Session object for the sequence of requests.
+    `current_form_page_url`: url of the page which came as a response to the POST call in which,
+    username and password were submitted.
     '''
 
     error = None
@@ -45,13 +49,14 @@ def select_alternate_method(session, current_form_page_url):
         return None, None, error, session
 
     try:
-        # get all available methods
+        # get the page where all enabled method are listed for selection
         login_html = session.get(select_method_page.url)
 
     except(requests.exceptions.ConnectionError):
         error = "Connection Error"
         return None, None, error, session
 
+    # find all the available methods from the response page.
     available_methods, error = utils.get_available_methods(login_html.text)
 
     return available_methods, select_method_page.url, error, session
@@ -59,10 +64,13 @@ def select_alternate_method(session, current_form_page_url):
 
 def get_default_method(resp_page):
     '''
-    3. Find the default method for two factor authentication from response text.
+    Find the default method for two factor authentication from response text.
+    `resp_page`: the page from which default method is extracted.
     '''
 
     error = None
+
+    # get all the two factor method names.
     methods = utils.get_method_names()
 
     # if there was some problem with the default method, we need to ask user to use alternate
@@ -76,6 +84,9 @@ def get_default_method(resp_page):
 
     else:
         try:
+            # elect method index according to its found text in the response page, for example if
+            # 'text message' is found in the response text then default method is 'text message
+            # otp' so its code will be returned.
             method = [m for m in methods if methods[m][0] in resp_page][0]
 
         except:
@@ -91,17 +102,16 @@ def get_default_method(resp_page):
 
 def normal_login(session, username, password, continue_url):
     '''
-    2. Method for login to a normal account without TFA.
-
-    `url_login`: url to the login form page.
-    `url_auth`: url to post login credentials and other data.
-    `payload`: payload to send with POST request, i.e. cookies, tokens etc. more details in
-    `get_payload` function.
-    These are extracted from GET request.
+    Method for login to a normal account without TFA.
+    `continue_url`: the url to call after login.
     '''
 
+    # url to the login form page.
     url_login = "https://accounts.google.com/ServiceLogin?service=androiddeveloper"
+
+    # url to post login credentials and other data.
     url_auth = "https://accounts.google.com/ServiceLoginAuth?service=androiddeveloper"
+
     error = None
 
     try:
@@ -111,7 +121,8 @@ def normal_login(session, username, password, continue_url):
         error = "Connection Error"
         return None, error, session
 
-    # prepare payload to send with POST request
+    # payload to send with POST request, i.e. cookies, tokens etc. more details in
+    # `utils.make_payload` function.
     payload = utils.make_payload(form_html.text)
 
     # add email, password and target url in payload
@@ -126,6 +137,8 @@ def normal_login(session, username, password, continue_url):
         resp_page = None
         error = "Connection error"
 
+    # If request was malformed or not appropriate, then probably payload was not correct, log it
+    # for later debugging.
     if resp_page.status_code != 200:
         f = open(log_dir+"login_form_log.html", 'w')
         f.write(resp_page.text)
@@ -155,10 +168,12 @@ def normal_login(session, username, password, continue_url):
 
 def login(username, password):
     '''
-    1. Function to log into user's google account.
+    Function to log into user's google account.
     '''
+    # prepare requests session object. It will be used in all the consequent requests.
     session = requests.session()
 
+    # TODO: Don;t hard code, see https://github.com/HashGrowth/py-google-auth/issues/2 for details.
     # url to finally redirect to.
     play_console_base_url = "https://play.google.com/apps/publish"
 

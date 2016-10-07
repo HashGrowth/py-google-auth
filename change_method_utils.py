@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 
 import utils
 
+# directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
@@ -13,7 +14,7 @@ def get_payload_for_select_page(form_html, form_key):
     Function to collect payload from method selection page.
     The page contains multiple forms with hidden fields having payload params.
     using `form_key` we select appropriate form and then collect input field values.
-    You can read payload field details in `get_payload` function.
+    You can read payload field details in `utils.make_payload` function.
     '''
 
     payload = {}
@@ -34,10 +35,8 @@ def get_payload_for_select_page(form_html, form_key):
 
 def get_method_for_selection(selected_method):
     '''
-    Returns two word method name for a complete method string given by google while selecting
+    Returns method code for a complete method string given by google while selecting
     alternate tfa method.
-    This is done because front end is using these two word method names to render forms for each
-    method.
     '''
     methods = utils.get_method_names()
     method = [method for method in methods if methods[method][0] in selected_method][0]
