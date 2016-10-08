@@ -1,7 +1,8 @@
 import falcon
-import login
 
 from wsgiref import simple_server
+
+from . import login
 
 
 # create API

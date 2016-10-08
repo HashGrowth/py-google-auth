@@ -3,7 +3,7 @@ import requests
 
 from bs4 import BeautifulSoup
 
-import utils
+from . import utils
 
 # directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
