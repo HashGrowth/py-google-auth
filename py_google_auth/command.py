@@ -12,19 +12,17 @@ Where:
   <address> is what to listen on, of the form <host>[:<port>], or just <port>
 '''
 
+from __future__ import print_function
+
 import logging
 import optparse
-import re
 import subprocess
 import sys
 
-with open('py_google_auth/__init__.py', 'r') as fd:
-    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
-                        fd.read(), re.MULTILINE).group(1)
-
+from .version import __version__
 
 usage = '\n\n\n'.join(__doc__.split('\n\n\n')[1:])
-version = 'py-google-auth ' + version
+version = 'py-google-auth ' + __version__
 
 
 def get_address(arguments):
