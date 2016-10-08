@@ -1,10 +1,26 @@
 import os
+import re
 import requests
 
-import utils
+from . import utils
 
 # directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
+
+
+def is_valid_email(email):
+    '''
+    Validates an email based on its pattern.
+    '''
+
+    valid_pattern = '[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}'
+    found = re.search(valid_pattern, email, re.I)
+
+    try:
+        found.group()
+        return True
+    except AttributeError:
+        return False
 
 
 def select_alternate_method(session, current_form_page_url):
@@ -106,8 +122,10 @@ def normal_login(session, username, password, continue_url):
     `continue_url`: the url to call after login.
     '''
 
+    # TODO: remove hard coded service name
     # url to the login form page.
-    url_login = "https://accounts.google.com/ServiceLogin?service=androiddeveloper"
+    base_url_login = "https://accounts.google.com/ServiceLogin?"
+    url_login = base_url_login + "service=androiddeveloper"
 
     # url to post login credentials and other data.
     url_auth = "https://accounts.google.com/ServiceLoginAuth?service=androiddeveloper"
@@ -149,6 +167,11 @@ def normal_login(session, username, password, continue_url):
 
     if ("Google doesn't recognize that email" in resp_page.text or
        "Wrong password" in resp_page.text):
+        error = "Invalid credentials"
+        return resp_page, error, session
+
+    # if only email is invalid
+    if url_auth == resp_page.url or base_url_login in resp_page.url:
         error = "Invalid credentials"
         return resp_page, error, session
 
