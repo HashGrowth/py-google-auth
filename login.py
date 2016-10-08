@@ -3,10 +3,23 @@ import json
 import jsonpickle
 import os
 
-import utils
-import login_utils
-import step_two_utils
-import change_method_utils
+from . import utils
+from . import login_utils
+from . import step_two_utils
+from . import change_method_utils
+
+
+def verify_data_exist(req, resp, resource, params):
+    '''
+    Verify if payload was sent with request.
+    '''
+
+    body = req.stream.read()
+    try:
+        data = json.loads(body.decode('utf-8'))
+        req.stream = data
+    except ValueError:
+        raise falcon.HTTPBadRequest('Empty payload', 'No valid json was supplied with request')
 
 
 def validate_request(req, resp, resource, params):
@@ -14,8 +27,7 @@ def validate_request(req, resp, resource, params):
     Decorator method to validate token before processing request.
     '''
     # read request body and parse it into a json object.
-    body = req.stream.read()
-    data = json.loads(body.decode('utf-8'))
+    data = req.stream
 
     # token to grant access to API
     # this is set in the environment of the system where API is deployed.
@@ -23,14 +35,14 @@ def validate_request(req, resp, resource, params):
 
     if 'token' not in data:
         msg = 'Please send access token along with your request'
-        raise falcon.HTTPUnauthorized('Token Required', msg, valid_token)
+        raise falcon.HTTPBadRequest('Token Required', msg)
     else:
         # token received from the request data.
         req_token = data['token']
 
         if req_token != valid_token:
             msg = 'Please supply a valid token.'
-            raise falcon.HTTPUnauthorized('Invalid Token', msg, valid_token)
+            raise falcon.HTTPBadRequest('Invalid Token', msg)
 
     # since stream is a file, it has been read once so won't be able to read it again in the end
     # point functions that are called afterwards, so setting it to the data that was already parsed
@@ -38,6 +50,7 @@ def validate_request(req, resp, resource, params):
     req.stream = data
 
 
+@falcon.before(verify_data_exist)
 @falcon.before(validate_request)
 class NormalLogin(object):
     '''
@@ -49,8 +62,15 @@ class NormalLogin(object):
         data = req.stream
 
         # extract required parameters from the data.
-        email = data['email']
-        password = data['password']
+        try:
+            email = data['email']
+            password = data['password']
+        except KeyError:
+            raise falcon.HTTPBadRequest('Empty credentials', 'Please supply valid crendetials.')
+
+        if not login_utils.is_valid_email(email):
+            msg = 'This email address does not exist.'
+            raise falcon.HTTPUnauthorized('Invalid credentials', msg, False)
 
         # call the function to make initial login attempt.
         response, error, session = login_utils.login(email, password)
@@ -128,7 +148,7 @@ class NormalLogin(object):
             resp.status = falcon.HTTP_500
 
         elif error and error == "Invalid credentials":
-            resp.status = falcon.HTTP_400
+            resp.status = falcon.HTTP_401
 
         # Too many login attempts can throw captcha, in this case we need to rout the request to
         # another server (if deployed in big scale where multiple servers are available to handle
@@ -147,6 +167,7 @@ class NormalLogin(object):
             resp.body = json.dumps({'session': session})
 
 
+@falcon.before(verify_data_exist)
 @falcon.before(validate_request)
 class StepTwoLogin(object):
     '''
@@ -213,6 +234,7 @@ class StepTwoLogin(object):
         resp.body = json.dumps({'session': session})
 
 
+@falcon.before(verify_data_exist)
 @falcon.before(validate_request)
 class ChangeMethod(object):
     '''
