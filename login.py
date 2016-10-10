@@ -22,6 +22,27 @@ def verify_data_exist(req, resp, resource, params):
         raise falcon.HTTPBadRequest('Empty payload', 'No valid json was supplied with request')
 
 
+def verify_credentials(req, resp, resource, params):
+    '''
+    Decorator method to verify whether email and password are present in data and also the email
+    is valid or not.
+    '''
+
+    data = req.stream
+
+    # extract required parameters from the data.
+    try:
+        email = data['email']
+        data['password']
+    except KeyError:
+        msg = "Either email or password is not present or the email is invalid."
+        raise falcon.HTTPBadRequest('Incomplete credentials', 'Please supply valid crendetials.')
+
+    if not login_utils.is_valid_email(email):
+        msg = 'This email address does not exist.'
+        raise falcon.HTTPUnauthorized('Invalid credentials', msg, False)
+
+
 def validate_request(req, resp, resource, params):
     '''
     Decorator method to validate token before processing request.
@@ -52,6 +73,7 @@ def validate_request(req, resp, resource, params):
 
 @falcon.before(verify_data_exist)
 @falcon.before(validate_request)
+@falcon.before(verify_credentials)
 class NormalLogin(object):
     '''
     Handles initial login request.
@@ -61,16 +83,8 @@ class NormalLogin(object):
         # set in the decorator method for request validation.
         data = req.stream
 
-        # extract required parameters from the data.
-        try:
-            email = data['email']
-            password = data['password']
-        except KeyError:
-            raise falcon.HTTPBadRequest('Empty credentials', 'Please supply valid crendetials.')
-
-        if not login_utils.is_valid_email(email):
-            msg = 'This email address does not exist.'
-            raise falcon.HTTPUnauthorized('Invalid credentials', msg, False)
+        email = data['email']
+        password = data['password']
 
         # call the function to make initial login attempt.
         response, error, session = login_utils.login(email, password)
