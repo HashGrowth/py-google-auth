@@ -36,7 +36,7 @@ def verify_credentials(req, resp, resource, params):
         data['password']
     except KeyError:
         msg = "Either email or password is not present or the email is invalid."
-        raise falcon.HTTPBadRequest('Incomplete credentials', 'Please supply valid crendetials.')
+        raise falcon.HTTPBadRequest('Incomplete credentials', msg)
 
     if not login_utils.is_valid_email(email):
         msg = 'This email address does not exist.'
@@ -156,11 +156,6 @@ class NormalLogin(object):
         elif error and error == "Connection Error":
             resp.status = falcon.HTTP_504
 
-        # Parsing error is same throughout the implementation which indicates that API needs update
-        # in its implementation.
-        elif error and error == "Parsing Error":
-            resp.status = falcon.HTTP_500
-
         elif error and error == "Invalid credentials":
             resp.status = falcon.HTTP_401
 
@@ -168,7 +163,11 @@ class NormalLogin(object):
         # another server (if deployed in big scale where multiple servers are available to handle
         # this part else just try after some time).
         elif error and error == "captcha":
-            pass
+            resp.status = falcon.HTTP_429
+
+        # Any other error indicates that API needs update in its implementation.
+        elif error:
+            resp.status = falcon.HTTP_500
 
         else:
             # encode session as json; this is different from the encoding process used above when
