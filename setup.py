@@ -33,7 +33,7 @@ setup(
     name='py-google-auth',
     version=version,
     description='API for login into a google account.',
-    long_description=read("README.md"),
+    long_description=read("README.rst"),
     author='Swati Jaiswal',
     author_email='jaiswalswati94@gmail.com',
     url='https://github.com/HashGrowth/py-google-auth/',

@@ -3,16 +3,14 @@ Implements command line interface for the API.
 This will be used to run the API server.
 
 
-Usage:
+
   py_google_auth [<address>]
-  py_google_auth -V | --version
+  py_google_auth --version
   py_google_auth -h | --help
 
 Where:
-  <address> is what to listen on, of the form <host>[:<port>], or just <port>
+  <address> is what to listen on, of the form <host> <port>, or just <port>
 '''
-
-from __future__ import print_function
 
 import logging
 import optparse
@@ -87,5 +85,5 @@ def main(argv=None):
         return 0
 
     except Exception as e:
-        print(e)
+        logging.error(e)
         return 1
