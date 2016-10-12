@@ -232,6 +232,10 @@ class StepTwoLogin(object):
             elif error == "Parsing Error":
                 resp.status = falcon.HTTP_500
 
+            elif error == "Invalid Method":
+                msg = "Send a valid method code"
+                raise falcon.HTTPBadRequest('Invalid Method', msg)
+
             elif error == "Wrong Code" or error == "Empty Code":
                 resp.status = falcon.HTTP_406
 
@@ -286,6 +290,11 @@ class ChangeMethod(object):
 
             elif error == "Parsing Error":
                 resp.status = falcon.HTTP_500
+
+            elif error == "Invalid Method":
+                msg = "Send a valid method"
+                raise falcon.HTTPBadRequest("Invalid Method", msg)
+
         else:
             # get the method code, this is done so that the api user can get the method code to
             # send back in the next call to step two end point.
