@@ -69,9 +69,13 @@ def get_alternate_method(session, method, select_challenge_url):
     available_methods, error = utils.get_available_methods(form_html.text)
 
     if not error:
-        # map protocol and selection according to selected method using the methods dictionary
-        selection = available_methods.index(method)
-        protocol = [methods[item][1] for item in methods if methods[item][0] in method][0]
+        try:
+            # map protocol and selection according to selected method using the methods dictionary
+            selection = available_methods.index(method)
+            protocol = [methods[item][1] for item in methods if methods[item][0] in method][0]
+        except:
+            error = "Invalid Method"
+            return form_html, error, session
 
     else:
         return form_html, error, session

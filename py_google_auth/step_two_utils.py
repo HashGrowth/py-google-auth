@@ -207,6 +207,12 @@ def second_step_login(session, method, url, payload, query_params, otp):
     elif method == 4:
         resp_page, error, session = two_step_login_with_backup_code(session, payload,
                                                                     url_to_challenge_signin, otp)
+
+    # if input method didn't match
+    else:
+        error = "Invalid Method"
+        return None, error, session
+
     if resp_page and "Wrong code. Try again." in resp_page.text:
         error = "Wrong Code"
 
