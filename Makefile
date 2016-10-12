@@ -15,3 +15,6 @@ publish:
 	python setup.py bdist_wheel
 	twine upload -r pypitest dist/*
 	rm -rf build dist .egg py_google_auth.egg-info
+clean:
+	rm *~
+	rm *.swp *.swo
