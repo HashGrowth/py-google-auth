@@ -3,7 +3,7 @@
 ## Introduction
 Headless implementation of Google web login (with support for 2-Step Verification) in Python
 
-`py-google-auth` exposes a high-level Python module and REST API that can be used for headless login on [Google Accounts](https://accounts.google.com/ServiceLogin). The API supports 2-step Verification if it is enabled on Google Account being used.
+`py-google-auth` exposes a high-level Python module and REST API that can be used for headless login on [Google Accounts](https://accounts.google.com/ServiceLogin). The API supports *2-step verification* if it is enabled on Google Account being used.
 
 **Note**: This project is in "alpha" version right now. We are actively developing it and expect it to be beta-ready in next couple of weeks.
 
