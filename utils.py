@@ -129,3 +129,14 @@ def get_query_params(page):
     txId = div_with_key_id.get('data-tx-id')
 
     return {'key': key, 'txId': txId}
+
+
+def get_phone_number(page):
+    '''
+    Function to extract phone number to which otp is sent, from the response page.
+    '''
+    soup = BeautifulSoup(page)
+    number_container = soup.find(class_="DZNRQe")
+    number = number_container.text
+
+    return number

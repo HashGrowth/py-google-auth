@@ -108,3 +108,15 @@ def get_alternate_method(session, method, select_challenge_url):
         return None, error, session
 
     return challenge_resp, error, session
+
+
+def extract_phone_num(text):
+    '''
+    This function takes the method string and extract the phone number from that.
+    '''
+
+    text_list = text.split(" ")
+    number_str = [text_list[-2], text_list[-1]]
+    number = "".join(number_str)
+
+    return number

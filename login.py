@@ -130,6 +130,15 @@ class NormalLogin(object):
             # encode session as json; details in the function itself.
             session = utils.serialize_session(session)
 
+            # if default method is text message, get the phone number to which otp was sent.
+            if default_method == 3:
+                phone_num = utils.get_phone_number(response.text)
+                data_to_send = {'session': session, 'number': phone_num}
+
+            else:
+                # the data to be sent with response
+                data_to_send = {'session': session}
+
             # if both default_method and available methods not fetched, that is some exception
             # occured in making requests or format of the response page has changed then respond
             # with a 500 to indicate that the request can't be fulfilled. Requires updates in API
@@ -140,18 +149,22 @@ class NormalLogin(object):
             # if available methods not fetched; return default_method only
             elif error:
                 resp.status = falcon.HTTP_502
-                resp.body = json.dumps({'session': session, 'default_method': default_method})
+                data_to_send['default_method'] = default_method
+
+                resp.body = json.dumps(data_to_send)
 
             # if default method not available; return all enabled methods
             elif method_error:
                 resp.status = falcon.HTTP_503
-                resp.body = json.dumps({'session': session, 'methods': methods})
+                data_to_send['methods'] = methods
+                resp.body = json.dumps(data_to_send)
 
             else:
                 # if both default method and available methods fetched
                 resp.status = falcon.HTTP_303
-                resp.body = json.dumps({'session': session, 'default_method': default_method,
-                                        'methods': methods})
+                data_to_send['default_method'] = default_method
+                data_to_send['methods'] = methods
+                resp.body = json.dumps(data_to_send)
 
         elif error and error == "Connection Error":
             resp.status = falcon.HTTP_504
@@ -287,6 +300,11 @@ class ChangeMethod(object):
             elif error == "Parsing Error":
                 resp.status = falcon.HTTP_500
         else:
+            # if method is text message, extract the phone number from it.
+            if "text message" in method:
+                phone_num = change_method_utils.extract_phone_num(method)
+                data['number'] = phone_num
+
             # get the method code, this is done so that the api user can get the method code to
             # send back in the next call to step two end point.
             method = change_method_utils.get_method_for_selection(method)
