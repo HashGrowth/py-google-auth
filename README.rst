@@ -16,9 +16,16 @@ To install, run:
     $ pip install py-google-auth
 
 (for test):
+
 .. code-block:: bash
 
     $ pip install -i https://testpypi.python.org/pypi --extra-index-url https://pypi.python.org/pypi py-google-auth
+
+to update the version:
+
+.. code-block:: bash
+
+    $ pip install -Ui https://testpypi.python.org/pypi --extra-index-url https://pypi.python.org/pypi py-google-auth
 
 To be able to make requests to API, you will need a token.
 You need to set it in your system environment for the API to access it and then pass it with every request you make:   
