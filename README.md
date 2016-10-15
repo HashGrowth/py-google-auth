@@ -3,12 +3,13 @@
 ## Introduction
 Headless implementation of Google web login (with support for 2-Step Verification) in Python
 
-`py-google-auth` exposes a high-level REST API that can be used for headless login at [Google Accounts: Sign in](https://accounts.google.com/ServiceLogin). 
+`py-google-auth` exposes a high-level Python module and REST API that can be used for headless login on [Google Accounts](https://accounts.google.com/ServiceLogin). The API supports 2-step Verification if it is enabled on Google Account being used.
 
 **Note**: This project is in "alpha" version right now. We are actively developing it and expect it to be beta-ready in next couple of weeks.
 
 ## License
 MIT.
+
 The license text is available in `LICENSE` file in root of this repo.
 
 ## Supported 2-step verification 'steps'
@@ -20,7 +21,7 @@ We support following 'steps' (i.e. methods) offered by Google in [2-step verific
 * **Backup phone**: Add a backup phone so you can still sign in if you lose your phone.
 
 ## Unsupported 2-step verification 'step'
-We **DONT* support following 'step' (i.e. method):
+We **DONT** support following 'step' (i.e. method):
 * **Security Key**: A Security Key is a small physical device used for signing in. It plugs into your computer's USB port.
 
 ## Documentation
@@ -31,9 +32,8 @@ To be done.
 
 ## Maintainers/Contact
 
-1. [Swati Jaiswal](https://github.com/curioswati) (Current maintainer)
-
-If Swati isn't responding, feel free to poke [Amber Jain](https://github.com/amberj) or [Pulkit Vaishnav](https://github.com/pulkitvaishnav/).
+* [Swati Jaiswal](https://github.com/curioswati) (Current maintainer)
+* If Swati isn't responding, feel free to poke [Amber Jain](https://github.com/amberj) or [Pulkit Vaishnav](https://github.com/pulkitvaishnav/).
 
 ## How to Contribute
 
