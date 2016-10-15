@@ -60,7 +60,7 @@ Example for an account without two factor auth enabled:
     >>> token = os.environ.get('PY_GOOGLE_AUTH_TOKEN')
     >>> data = {'email': 'myemail@example.com', 'password': 'myrandompassword', 'token': token}
 
-    >>> req = requests.post('http://localhost:8001/login', json=data}
+    >>> req = requests.post('http://localhost:8001/login', json=data)
     >>> req
     <Respose 200>
 
@@ -69,6 +69,9 @@ Example for an account without two factor auth enabled:
     >>> google_play_page = session.get('https://play.google.com/apps/publish')
     >>> google_play_page
     <Respose 200>
+
+
+_Note:_ jsonpickle is used to encode python objects into json, since we get an encoded string which contains a request.Session object, we need to use decode to make it an object again.
 
 More examples with other endpoints can be found in `docs <http://py-google-auth.readthedocs.io/en/latest/>`_.
 
