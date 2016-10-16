@@ -140,3 +140,16 @@ def get_phone_number(page):
     number = number_container.text
 
     return number
+
+
+def scrap_error(page):
+    '''
+    This function scraps an error message (if exist) from a response page.
+    '''
+    soup = BeautifulSoup(page)
+    error_span = soup.find('span', id='errorMsg')
+
+    if error_span:
+        error = error_span.text
+
+    return error
