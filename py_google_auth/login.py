@@ -259,7 +259,10 @@ class StepTwoLogin(object):
                 resp.status = falcon.HTTP_408
 
             else:
-                resp.status = falcon.HTTP_200
+                resp.status = falcon.HTTP_500
+
+        else:
+            resp.status = falcon.HTTP_200
 
         resp.body = json.dumps({'session': session})
 

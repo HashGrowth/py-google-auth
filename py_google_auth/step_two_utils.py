@@ -1,6 +1,10 @@
 import json
 import os
 import requests
+import time
+
+
+from . import utils
 
 # directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
@@ -48,7 +52,8 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # if request was not appropriate, log the response for further debugging.
     if 'error' in reply_json and reply_json['error']['code'] == 500:
         # log the error
-        f = open(log_dir + "request_to_await_url_log.html", 'w')
+        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
+        f = open(log_dir + file_name, 'w')
         f.write(str(reply_json))
         f.close()
 
@@ -66,12 +71,13 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
 
     except:
         # if there is some problem with payload, log the content of response to debug
-        f = open(log_dir+"await_url_resp.html", 'w')
-        f.write(reply_from_user.content.decode('utf-8'))
+        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
+        f = open(log_dir + file_name, 'w')
+        f.write(reply_from_user.text)
         f.close()
 
         error = "Parsing Error"
-        return reply_json, error, session
+        return reply_from_user, error, session
 
     try:
         # make final call to sign in
@@ -133,7 +139,8 @@ def two_step_login_with_text_msg(session, payload, url_to_challenge_signin, otp)
         # again.
         payload.pop('SendMethod')
     except:
-        f = open(log_dir+"text_msg_form_log.html", 'w')
+        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
+        f = open(log_dir + file_name, 'w')
         f.write(payload)
         f.close()
 
@@ -213,14 +220,26 @@ def second_step_login(session, method, url, payload, query_params, otp):
         error = "Invalid Method"
         return None, error, session
 
-    if resp_page and "Wrong code. Try again." in resp_page.text:
-        error = "Wrong Code"
+    set_cookies = session.cookies
 
-    if resp_page and "Enter a code" in resp_page.text:
-        error = "Empty Code"
+    # if login was not succesful, there might be some error
+    if len(set_cookies) < 7:
+        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
+        f = open(log_dir + file_name, 'w')
+        f.write(resp_page.text)
+        f.close()
 
-    # If user denies prompt login.
-    if resp_page and "you canceled it" in resp_page.text:
-        error = "Prompt Denied"
+        error = utils.scrap_error(resp_page.text)
+
+        if error:
+            if "Wrong" in error:
+                error = "Wrong Code"
+
+            if "Enter a code" in error:
+                error = "Empty Code"
+
+        # If user denies prompt login.
+        if resp_page and "you canceled it" in resp_page.text:
+            error = "Prompt Denied"
 
     return resp_page, error, session
