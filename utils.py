@@ -151,5 +151,7 @@ def scrap_error(page):
 
     if error_span:
         error = error_span.text
+    else:
+        error = None
 
     return error

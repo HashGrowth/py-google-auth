@@ -258,11 +258,11 @@ class StepTwoLogin(object):
             elif error == "Time Out":
                 resp.status = falcon.HTTP_408
 
-            elif error:
+            else:
                 resp.status = falcon.HTTP_500
 
-            else:
-                resp.status = falcon.HTTP_200
+        else:
+            resp.status = falcon.HTTP_200
 
         resp.body = json.dumps({'session': session})
 
