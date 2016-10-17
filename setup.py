@@ -1,5 +1,4 @@
 import os
-import re
 
 from codecs import open
 from setuptools import setup, find_packages
@@ -17,21 +16,18 @@ requires = [
     'requests'
 ]
 
-with open('py_google_auth/version.py', 'r') as fd:
-    version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
-                        fd.read(), re.MULTILINE).group(1)
-
-if not version:
-    raise RuntimeError('Cannot find version information')
-
 
 def read(filename):
     with open(os.path.join(os.path.dirname(__file__), filename)) as f:
         return f.read()
 
+version_file = 'py_google_auth/version.py'
+version = {}
+exec(read(version_file), version)
+
 setup(
     name='py-google-auth',
-    version=version,
+    version=version['__version__'],
     description='API for login into a google account.',
     long_description=read("README.rst"),
     author='Swati Jaiswal',
