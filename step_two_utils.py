@@ -177,6 +177,11 @@ def second_step_login(session, method, url, payload, query_params, otp):
     Calls appropriate funtions based upon the two factor method.
     '''
 
+    # TODO: shift these to config file
+    base_url_login = "https://accounts.google.com/ServiceLogin?"
+    url_login = base_url_login + "service=androiddeveloper"
+    url_auth = "https://accounts.google.com/ServiceLoginAuth?service=androiddeveloper"
+
     error = None
 
     # the url to make POST request to send otp to user
@@ -229,6 +234,10 @@ def second_step_login(session, method, url, payload, query_params, otp):
         # If user denies prompt login.
         elif resp_page and "you canceled it" in resp_page.text:
             error = "Prompt Denied"
+
+        # TODO: temporary solution, need to find a way to find when timeout occurs
+        elif url_auth == resp_page.url or base_url_login in resp_page.url:
+            error = "Time Out"
 
         else:
             error = "Parsing Error"
