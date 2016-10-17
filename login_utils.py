@@ -2,6 +2,8 @@ import os
 import re
 import requests
 
+from bs4 import BeautifulSoup
+
 from . import utils
 
 # directory path for storing log files in case of unhandled cases.
@@ -21,6 +23,20 @@ def is_valid_email(email):
         return True
     except AttributeError:
         return False
+
+
+def check_response(page):
+    '''
+    Checks whether the response is correct to proceed or not.
+    '''
+    soup = BeautifulSoup(page)
+    challenge_picker = soup.find('ol', id='challengePickerList')
+
+    if challenge_picker:
+        return None
+    else:
+        error = "Parsing Error"
+        return error
 
 
 def select_alternate_method(session, current_form_page_url):
@@ -46,6 +62,13 @@ def select_alternate_method(session, current_form_page_url):
 
     payload = utils.make_payload(form_html.text)
 
+    # if the page did not have the form it won't have payload, that shows the response page has
+    # changed or the request was not appropriate.
+    if not payload:
+        file_name = utils.log_error("select alternate", form_html.text)
+        error = "Parsing Error"
+        return None, None, error, session
+
     try:
         # this will return the select challenge url and necessary parameters
         select_method_page = session.post(skip_url, data=payload)
@@ -54,22 +77,18 @@ def select_alternate_method(session, current_form_page_url):
         error = "Connection Error"
         return None, None, error, session
 
-    # if POST was not successful, assume request was in appropriate and log request payload origin
-    # page
-    if select_method_page.status_code != 200:
-        f = open(log_dir+"skip_url_response_log.html", 'w')
-        f.write(form_html.text)
-        f.close()
-
-        error = "Parsing Error"
-        return None, None, error, session
-
     try:
         # get the page where all enabled method are listed for selection
         login_html = session.get(select_method_page.url)
 
     except(requests.exceptions.ConnectionError):
         error = "Connection Error"
+        return None, None, error, session
+
+    error = check_response(login_html.text)
+
+    if error:
+        file_name = utils.log_error("select alternate", login_html.text)
         return None, None, error, session
 
     # find all the available methods from the response page.
@@ -106,10 +125,7 @@ def get_default_method(resp_page):
             method = [m for m in methods if methods[m][0] in resp_page][0]
 
         except:
-            f = open(log_dir+"default_method_form_log.html", 'w')
-            f.write(resp_page)
-            f.close()
-
+            file_name = utils.log_error("second step login", resp_page)
             method = None
             error = "Parsing Error"
 
@@ -143,6 +159,13 @@ def normal_login(session, username, password, continue_url):
     # `utils.make_payload` function.
     payload = utils.make_payload(form_html.text)
 
+    # if the page did not have the form it won't have payload, that shows the response page has
+    # changed or the request was not appropriate.
+    if not payload:
+        file_name = utils.log_error("normal login", form_html.text)
+        error = "Parsing Error"
+        return form_html, error, session
+
     # add email, password and target url in payload
     payload['Email'] = username
     payload['Passwd'] = password
@@ -155,36 +178,33 @@ def normal_login(session, username, password, continue_url):
         resp_page = None
         error = "Connection error"
 
-    # If request was malformed or not appropriate, then probably payload was not correct, log it
-    # for later debugging.
-    if resp_page.status_code != 200:
-        f = open(log_dir+"login_form_log.html", 'w')
-        f.write(resp_page.text)
-        f.close()
+    set_cookies = session.cookies
 
-        error = "Parsing Error"
-        return resp_page, error, session
+    if len(set_cookies) < 7:
+        if ("Google doesn't recognize that email" in resp_page.text or
+           "Wrong password" in resp_page.text):
+            error = "Invalid credentials"
+            return resp_page, error, session
 
-    if ("Google doesn't recognize that email" in resp_page.text or
-       "Wrong password" in resp_page.text):
-        error = "Invalid credentials"
-        return resp_page, error, session
+        # if only email is invalid
+        if url_auth == resp_page.url or base_url_login in resp_page.url:
+            error = "Invalid credentials"
+            return resp_page, error, session
 
-    # if only email is invalid
-    if url_auth == resp_page.url or base_url_login in resp_page.url:
-        error = "Invalid credentials"
-        return resp_page, error, session
+        # TODO: use some more specific text to identify captcha.
+        # if captcha occured
+        if "captcha" in resp_page.text:
+            error = "captcha"
+            return resp_page, error, session
 
-    # TODO: use some more specific text to identify captcha.
-    # if captcha occured
-    if "captcha" in resp_page.text:
-        error = "captcha"
-        return resp_page, error, session
+        # if TFA was enabled
+        if "signin/challenge" in resp_page.url:
+            error = "TFA"
+            return resp_page, error, session
 
-    # if TFA was enabled
-    if "signin/challenge" in resp_page.url:
-        error = "TFA"
-        return resp_page, error, session
+        else:
+            file_name = utils.log_error("normal login", resp_page.text)
+            error = "Parsing Error"
 
     return resp_page, error, session
 

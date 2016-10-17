@@ -242,9 +242,6 @@ class StepTwoLogin(object):
             if error == "Connection Error":
                 resp.status = falcon.HTTP_504
 
-            elif error == "Parsing Error":
-                resp.status = falcon.HTTP_500
-
             elif error == "Invalid Method":
                 msg = "Send a valid method code"
                 raise falcon.HTTPBadRequest('Invalid Method', msg)
@@ -304,12 +301,12 @@ class ChangeMethod(object):
             if error == "Connection Error":
                 resp.status = falcon.HTTP_504
 
-            elif error == "Parsing Error":
-                resp.status = falcon.HTTP_500
-
             elif error == "Invalid Method":
                 msg = "Send a valid method"
                 raise falcon.HTTPBadRequest("Invalid Method", msg)
+
+            else:
+                resp.status = falcon.HTTP_500
 
         else:
             # if method is text message, extract the phone number from it.

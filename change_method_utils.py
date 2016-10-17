@@ -92,10 +92,7 @@ def get_alternate_method(session, method, select_challenge_url):
         challengeId = payload['challengeId']
 
     except:
-        f = open(log_dir+"select_method_form_log.html", 'w')
-        f.write(form_html.text)
-        f.close()
-
+        file_name = utils.log_error("select alternate", form_html.text)
         error = "Parsing Error"
         return form_html, error, session
 

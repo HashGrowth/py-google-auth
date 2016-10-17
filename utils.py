@@ -1,6 +1,7 @@
 import os
 import jsonpickle
 import requests
+import time
 
 from bs4 import BeautifulSoup
 
@@ -103,10 +104,7 @@ def get_available_methods(page):
             available_methods.append(item.text)
 
     except:
-        f = open(log_dir+"select_method_form_log.html", 'w')
-        f.write(page)
-        f.close()
-
+        file_name = log_error("select alternate", page)
         error = "Parsing Error"
 
     return available_methods, error
@@ -122,13 +120,21 @@ def get_query_params(page):
     soup = BeautifulSoup(page)
     div_with_key_id = soup.find('div', class_='LJtPoc')
 
-    # this is a query parameter sent with `await_url` in `step_two_utils.login_with_prompt` method.
-    key = div_with_key_id.get('data-api-key')
+    try:
+        # this is a query parameter sent with `await_url` in `step_two_utils.login_with_prompt` method.
+        key = div_with_key_id.get('data-api-key')
 
-    # a payload item sent in POST request to `await_url`.
-    txId = div_with_key_id.get('data-tx-id')
+        # a payload item sent in POST request to `await_url`.
+        txId = div_with_key_id.get('data-tx-id')
 
-    return {'key': key, 'txId': txId}
+        data = {'key': key, 'txId': txId}
+
+    except:
+        # log exception
+        file_name = log_error("second step login", page)
+        data = {}
+
+    return data
 
 
 def get_phone_number(page):
@@ -155,3 +161,19 @@ def scrap_error(page):
         error = None
 
     return error
+
+
+def log_error(step, content):
+    '''
+    This function logs a page for error.
+    It is called whenever an unhandled exception will occur.
+    `step`: The step in login process, it cold be normal_login, step_two_login or select_alternate.
+            It makes it easy to identify the file in logs.
+    `content`: content to log.
+    '''
+    file_name = step + ": " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
+    f = open(log_dir+file_name, 'w')
+    f.write(content)
+    f.close()
+
+    return file_name

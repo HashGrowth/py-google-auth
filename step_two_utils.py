@@ -1,7 +1,6 @@
 import json
 import os
 import requests
-import time
 
 
 from . import utils
@@ -34,8 +33,12 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # headers are necessary to specify the referer and content type else request fails.
     headers = {"Referer": url_to_challenge_signin, "Content-Type": "application/json"}
 
-    key = query_params['key']
-    txId = query_params['txId']
+    if query_params:
+        key = query_params['key']
+        txId = query_params['txId']
+    else:
+        error = "Parsing Error"
+        return None, error, session
 
     try:
         # make call to wait for user response
@@ -52,11 +55,7 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # if request was not appropriate, log the response for further debugging.
     if 'error' in reply_json and reply_json['error']['code'] == 500:
         # log the error
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(str(reply_json))
-        f.close()
-
+        file_name = utils.log_error("second step login", reply_json)
         error = "Parsing Error"
         return reply_json, error, session
 
@@ -71,11 +70,7 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
 
     except:
         # if there is some problem with payload, log the content of response to debug
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(reply_from_user.text)
-        f.close()
-
+        file_name = utils.log_error("second step login", reply_from_user.text)
         error = "Parsing Error"
         return reply_from_user, error, session
 
@@ -139,11 +134,7 @@ def two_step_login_with_text_msg(session, payload, url_to_challenge_signin, otp)
         # again.
         payload.pop('SendMethod')
     except:
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(payload)
-        f.close()
-
+        file_name = utils.log_error("second step login", payload)
         error = "Parsing Error"
         return None, error, session
 
@@ -196,7 +187,7 @@ def second_step_login(session, method, url, payload, query_params, otp):
         resp_page, error, session = two_step_login_with_prompt(session, payload, query_params,
                                                                url_to_challenge_signin)
 
-        # if user does not respond
+        # if user does not respond for prompt
         if isinstance(resp_page, dict) and resp_page['error']['code'] == 500:
             return resp_page, "Time Out", session
 
@@ -224,22 +215,22 @@ def second_step_login(session, method, url, payload, query_params, otp):
 
     # if login was not succesful, there might be some error
     if len(set_cookies) < 7:
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(resp_page.text)
-        f.close()
+        # log the page
+        file_name = utils.log_error("second step login", resp_page.text)
 
         error = utils.scrap_error(resp_page.text)
 
-        if error:
-            if "Wrong" in error:
-                error = "Wrong Code"
+        if error and "Wrong" in error:
+            error = "Wrong Code"
 
-            if "Enter a code" in error:
-                error = "Empty Code"
+        elif error and "Enter a code" in error:
+            error = "Empty Code"
 
         # If user denies prompt login.
-        if resp_page and "you canceled it" in resp_page.text:
+        elif resp_page and "you canceled it" in resp_page.text:
             error = "Prompt Denied"
+
+        else:
+            error = "Parsing Error"
 
     return resp_page, error, session
