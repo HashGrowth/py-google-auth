@@ -90,54 +90,16 @@ class NormalLogin(object):
         response, error, session = login_utils.login(email, password)
 
         # if two factor auth detected
-        if error and error == "TFA":
+        if error and error == 303:
 
             # find the default tfa method
             default_method, method_error = login_utils.get_default_method(response.text)
-
-            # if many attempts are made to login then default_method is usually blocked for a while
-            # hence we don't send default_method in response so that user can select alternative
-            # for which we send a list of other enabled methods on the account.
-            # if it is false, we send default_method in response.
-            if not method_error:
-                # create payload from response text
-                payload = utils.make_payload(response.text)
-
-                # current response url is used to make next POST call for second step of login and
-                # payload contains parameters that are to be sent with POST request, since we need
-                # these in the function that is called on step two end point, we save it in the
-                # session object and send in response so that we get it back with next request.
-
-                session.next_url = response.url
-                session.prev_payload = payload
-
-                # Google prompt need two variables from the response page which are used to make
-                # POST request to an api where prompt's respose is recorded to know what user has
-                # responded for prompt. saving them into query_params.
-                if default_method == 1:
-                    query_params = utils.get_query_params(response.text)
-                    session.query_params = query_params
 
             # collect all enabled methods on a user's google account.
             methods, select_method_url, error, session = login_utils.select_alternate_method(
                 session, response.url)
 
-            if not error:
-                # save url to select methods, this is used to again get the form of method
-                # selection which will in turn give appropriate payload for selected method
-                session.select_method_url = select_method_url
-
-            # encode session as json; details in the function itself.
-            session = utils.serialize_session(session)
-
-            # if default method is text message, get the phone number to which otp was sent.
-            if default_method == 3:
-                phone_num = utils.get_phone_number(response.text)
-                data_to_send = {'session': session, 'number': phone_num}
-
-            else:
-                # the data to be sent with response
-                data_to_send = {'session': session}
+            response_data = {}
 
             # if both default_method and available methods not fetched, that is some exception
             # occured in making requests or format of the response page has changed then respond
@@ -148,34 +110,61 @@ class NormalLogin(object):
 
             # if available methods not fetched; return default_method only
             elif error:
-                resp.status = falcon.HTTP_502
-                data_to_send['default_method'] = default_method
+                # set variables in session and prepare response using a utility method
+                response_data, session = utils.handle_default_method(default_method,
+                                                                     response, session)
 
-                resp.body = json.dumps(data_to_send)
+                # encode session as json; details in the function itself.
+                session = utils.serialize_session(session)
+                response_data['session'] = session
+
+                resp.status = falcon.HTTP_502
+                resp.body = json.dumps(response_data)
 
             # if default method not available; return all enabled methods
             elif method_error:
+
+                # save url to select methods, this is used to again get the form of method
+                # selection which will in turn give appropriate payload for selected method
+                session.select_method_url = select_method_url
+
+                # encode session as json; details in the function itself.
+                session = utils.serialize_session(session)
+
+                response_data['methods'] = methods
+                response_data['session'] = session
+
                 resp.status = falcon.HTTP_503
-                data_to_send['methods'] = methods
-                resp.body = json.dumps(data_to_send)
+                resp.body = json.dumps(response_data)
 
             else:
                 # if both default method and available methods fetched
-                resp.status = falcon.HTTP_303
-                data_to_send['default_method'] = default_method
-                data_to_send['methods'] = methods
-                resp.body = json.dumps(data_to_send)
+                response_data, session = utils.handle_default_method(default_method,
+                                                                     response, session)
 
-        elif error and error == "Connection Error":
+                # save url to select methods, this is used to again get the form of method
+                # selection which will in turn give appropriate payload for selected method
+                session.select_method_url = select_method_url
+
+                # encode session as json; details in the function itself.
+                session = utils.serialize_session(session)
+
+                response_data['methods'] = methods
+                response_data['session'] = session
+
+                resp.status = falcon.HTTP_303
+                resp.body = json.dumps(response_data)
+
+        elif error and error == 504:
             resp.status = falcon.HTTP_504
 
-        elif error and error == "Invalid credentials":
+        elif error and error == 401:
             resp.status = falcon.HTTP_401
 
         # Too many login attempts can throw captcha, in this case we need to rout the request to
         # another server (if deployed in big scale where multiple servers are available to handle
         # this part else just try after some time).
-        elif error and error == "captcha":
+        elif error and error == 429:
             resp.status = falcon.HTTP_429
 
         # Any other error indicates that API needs update in its implementation.
@@ -236,24 +225,48 @@ class StepTwoLogin(object):
 
         # since no further requests will be made in sequence after this request so no extra
         # variables are stuffed hence normal json encoding works here for the session object.
-        session = jsonpickle.encode(session)
+
+        response_data = {}
 
         if error:
-            if error == "Connection Error":
+            if error == 504:
                 resp.status = falcon.HTTP_504
 
-            elif error == "Invalid Method":
+            elif error == 400:
                 msg = "Send a valid method code"
                 raise falcon.HTTPBadRequest('Invalid Method', msg)
 
-            elif error == "Wrong Code" or error == "Empty Code":
+            elif error == 406:
                 resp.status = falcon.HTTP_406
 
-            elif error == "Prompt Denied":
+            elif error == 412:
                 resp.status = falcon.HTTP_412
 
-            elif error == "Time Out":
+            elif error == 408:
                 resp.status = falcon.HTTP_408
+
+            elif error == 503:
+                url = response['url']
+                methods = response['methods']
+
+                # save the url from where list of methods was obtained, this will be used to
+                # collect payload in next request when a method will be selected
+                session.select_method_url = url
+                session = utils.serialize_session(session)
+
+                response_data['methods'] = methods
+                resp.status = falcon.HTTP_503
+
+            elif error == 502:
+                methods = utils.get_method_names()
+                default_method = [m for m in methods if methods[m][1] in response.url][0]
+
+                # set variables in session and prepare response using a utility method
+                response_data, session = utils.handle_default_method(default_method,
+                                                                     response, session)
+                session = utils.serialize_session(session)
+                response_data['default_method'] = default_method
+                resp.status = falcon.HTTP_502
 
             else:
                 resp.status = falcon.HTTP_500
@@ -261,7 +274,14 @@ class StepTwoLogin(object):
         else:
             resp.status = falcon.HTTP_200
 
-        resp.body = json.dumps({'session': session})
+        # 502 and 503 shows that too many attempts with wrong otp were made, so in this case we
+        # either fall back to default method or provide a list of methods to select from (when
+        # default is blocked)
+        if error != 503 or error != 502:
+            session = jsonpickle.encode(session)
+
+        response_data['session'] = session
+        resp.body = json.dumps(response_data)
 
 
 @falcon.before(verify_data_exist)
@@ -298,10 +318,10 @@ class ChangeMethod(object):
         data = {}
 
         if error:
-            if error == "Connection Error":
+            if error == 504:
                 resp.status = falcon.HTTP_504
 
-            elif error == "Invalid Method":
+            elif error == 400:
                 msg = "Send a valid method"
                 raise falcon.HTTPBadRequest("Invalid Method", msg)
 

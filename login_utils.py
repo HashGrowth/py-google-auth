@@ -35,7 +35,7 @@ def check_response(page):
     if challenge_picker:
         return None
     else:
-        error = "Parsing Error"
+        error = 500
         return error
 
 
@@ -57,7 +57,7 @@ def select_alternate_method(session, current_form_page_url):
         form_html = session.get(current_form_page_url)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, None, error, session
 
     payload = utils.make_payload(form_html.text)
@@ -66,7 +66,7 @@ def select_alternate_method(session, current_form_page_url):
     # changed or the request was not appropriate.
     if not payload:
         file_name = utils.log_error("select alternate", form_html.text)
-        error = "Parsing Error"
+        error = 500
         return None, None, error, session
 
     try:
@@ -74,7 +74,7 @@ def select_alternate_method(session, current_form_page_url):
         select_method_page = session.post(skip_url, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, None, error, session
 
     try:
@@ -82,9 +82,10 @@ def select_alternate_method(session, current_form_page_url):
         login_html = session.get(select_method_page.url)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, None, error, session
 
+    # check whether page contains list of methods
     error = check_response(login_html.text)
 
     if error:
@@ -110,7 +111,10 @@ def get_default_method(resp_page):
 
     # if there was some problem with the default method, we need to ask user to use alternate
     if "Please try again later" in resp_page or "Something went wrong" in resp_page:
-        error = "Default not available"
+        # this is code is although used when an unexpected response occur, but in this case we need
+        # this for step_two_login when this method is called from there we don't want response 503
+        # hence using this (since now only codes are used for errors).
+        error = 500
 
     # select method based on the text from response page.
 
@@ -127,7 +131,7 @@ def get_default_method(resp_page):
         except:
             file_name = utils.log_error("second step login", resp_page)
             method = None
-            error = "Parsing Error"
+            error = 500
 
     return method, error
 
@@ -152,7 +156,7 @@ def normal_login(session, username, password, continue_url):
         form_html = session.get(url_login)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     # payload to send with POST request, i.e. cookies, tokens etc. more details in
@@ -163,7 +167,7 @@ def normal_login(session, username, password, continue_url):
     # changed or the request was not appropriate.
     if not payload:
         file_name = utils.log_error("normal login", form_html.text)
-        error = "Parsing Error"
+        error = 500
         return form_html, error, session
 
     # add email, password and target url in payload
@@ -176,35 +180,34 @@ def normal_login(session, username, password, continue_url):
 
     except(requests.exceptions.ConnectionError):
         resp_page = None
-        error = "Connection error"
+        error = 504
 
     set_cookies = session.cookies
 
     if len(set_cookies) < 7:
+
+        file_name = utils.log_error("normal login", form_html.text)
+        error = 500
+
         if ("Google doesn't recognize that email" in resp_page.text or
            "Wrong password" in resp_page.text):
-            error = "Invalid credentials"
-            return resp_page, error, session
-
-        # if only email is invalid
-        if url_auth == resp_page.url or base_url_login in resp_page.url:
-            error = "Invalid credentials"
+            error = 401
             return resp_page, error, session
 
         # TODO: use some more specific text to identify captcha.
         # if captcha occured
         if "captcha" in resp_page.text:
-            error = "captcha"
+            error = 429
             return resp_page, error, session
 
         # if TFA was enabled
         if "signin/challenge" in resp_page.url:
-            error = "TFA"
+            error = 303
             return resp_page, error, session
 
         else:
             file_name = utils.log_error("normal login", resp_page.text)
-            error = "Parsing Error"
+            error = 500
 
     return resp_page, error, session
 

@@ -62,7 +62,7 @@ def get_alternate_method(session, method, select_challenge_url):
         form_html = session.get(select_challenge_url)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     # available methods on a user's account
@@ -74,7 +74,7 @@ def get_alternate_method(session, method, select_challenge_url):
             selection = available_methods.index(method)
             protocol = [methods[item][1] for item in methods if methods[item][0] in method][0]
         except:
-            error = "Invalid Method"
+            error = 400
             return form_html, error, session
 
     else:
@@ -93,7 +93,7 @@ def get_alternate_method(session, method, select_challenge_url):
 
     except:
         file_name = utils.log_error("select alternate", form_html.text)
-        error = "Parsing Error"
+        error = 500
         return form_html, error, session
 
     # join the base url, protocol and challengeId to form the POST url
@@ -105,7 +105,7 @@ def get_alternate_method(session, method, select_challenge_url):
         challenge_resp = session.post(next_challenge_post_url, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     return challenge_resp, error, session
