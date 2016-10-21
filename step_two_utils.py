@@ -1,10 +1,10 @@
 import json
 import os
 import requests
-import time
 
 
 from . import utils
+from . import login_utils
 
 # directory path for storing log files in case of unhandled cases.
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
@@ -34,8 +34,12 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # headers are necessary to specify the referer and content type else request fails.
     headers = {"Referer": url_to_challenge_signin, "Content-Type": "application/json"}
 
-    key = query_params['key']
-    txId = query_params['txId']
+    if query_params:
+        key = query_params['key']
+        txId = query_params['txId']
+    else:
+        error = 500
+        return None, error, session
 
     try:
         # make call to wait for user response
@@ -43,7 +47,7 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
                                        data=json.dumps({"txId": txId}))
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     # convert response to json.
@@ -52,12 +56,8 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # if request was not appropriate, log the response for further debugging.
     if 'error' in reply_json and reply_json['error']['code'] == 500:
         # log the error
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(str(reply_json))
-        f.close()
-
-        error = "Parsing Error"
+        file_name = utils.log_error("second step login", reply_json)
+        error = 500
         return reply_json, error, session
 
     try:
@@ -71,12 +71,8 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
 
     except:
         # if there is some problem with payload, log the content of response to debug
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(reply_from_user.text)
-        f.close()
-
-        error = "Parsing Error"
+        file_name = utils.log_error("second step login", reply_from_user.text)
+        error = 500
         return reply_from_user, error, session
 
     try:
@@ -84,7 +80,7 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
         resp_page = session.post(url_to_challenge_signin, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     return resp_page, error, session
@@ -110,7 +106,7 @@ def two_step_login_with_authenticator(session, payload, url_to_challenge_signin,
         resp_page = session.post(url_to_challenge_signin, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     return resp_page, error, session
@@ -139,19 +135,15 @@ def two_step_login_with_text_msg(session, payload, url_to_challenge_signin, otp)
         # again.
         payload.pop('SendMethod')
     except:
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(payload)
-        f.close()
-
-        error = "Parsing Error"
+        file_name = utils.log_error("second step login", payload)
+        error = 500
         return None, error, session
 
     try:
         resp_page = session.post(url_to_challenge_signin, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     return resp_page, error, session
@@ -175,7 +167,7 @@ def two_step_login_with_backup_code(session, payload, url_to_challenge_signin, c
         resp_page = session.post(url_to_challenge_signin, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        error = "Connection Error"
+        error = 504
         return None, error, session
 
     return resp_page, error, session
@@ -183,8 +175,12 @@ def two_step_login_with_backup_code(session, payload, url_to_challenge_signin, c
 
 def second_step_login(session, method, url, payload, query_params, otp):
     '''
-    Calls appropriate funtions based upon the two factor method.
+    Calls appropriate functions based upon the two factor method.
     '''
+
+    # TODO: shift these to config file
+    base_url_login = "https://accounts.google.com/ServiceLogin?"
+    url_auth = "https://accounts.google.com/ServiceLoginAuth?service=androiddeveloper"
 
     error = None
 
@@ -193,53 +189,71 @@ def second_step_login(session, method, url, payload, query_params, otp):
 
     # login with Google prompt
     if method == 1:
-        resp_page, error, session = two_step_login_with_prompt(session, payload, query_params,
-                                                               url_to_challenge_signin)
+        response, error, session = two_step_login_with_prompt(session, payload, query_params,
+                                                              url_to_challenge_signin)
 
-        # if user does not respond
-        if isinstance(resp_page, dict) and resp_page['error']['code'] == 500:
-            return resp_page, "Time Out", session
+        # if user does not respond for prompt; time out error
+        if isinstance(response, dict) and response['error']['code'] == 500:
+            return response, 408, session
 
     # login with Google Authenticator
     elif method == 2:
-        resp_page, error, session = two_step_login_with_authenticator(session, payload,
-                                                                      url_to_challenge_signin, otp)
+        response, error, session = two_step_login_with_authenticator(session, payload,
+                                                                     url_to_challenge_signin, otp)
 
     # login with text msg
     elif method == 3:
-        resp_page, error, session = two_step_login_with_text_msg(session, payload,
-                                                                 url_to_challenge_signin, otp)
+        response, error, session = two_step_login_with_text_msg(session, payload,
+                                                                url_to_challenge_signin, otp)
 
     # login with backup code
     elif method == 4:
-        resp_page, error, session = two_step_login_with_backup_code(session, payload,
-                                                                    url_to_challenge_signin, otp)
+        response, error, session = two_step_login_with_backup_code(session, payload,
+                                                                   url_to_challenge_signin, otp)
 
     # if input method didn't match
     else:
-        error = "Invalid Method"
+        error = 400
         return None, error, session
 
     set_cookies = session.cookies
 
     # if login was not succesful, there might be some error
-    if len(set_cookies) < 7:
-        file_name = "second step login: " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
-        f = open(log_dir + file_name, 'w')
-        f.write(resp_page.text)
-        f.close()
-
-        error = utils.scrap_error(resp_page.text)
+    if not error and len(set_cookies) < 7:
+        # log the page
+        error = utils.scrap_error(response.text)
 
         if error:
-            if "Wrong" in error:
-                error = "Wrong Code"
+            if "Wrong" in error or "Enter a code" in error:
+                error = 406
 
-            if "Enter a code" in error:
-                error = "Empty Code"
+            else:
+                file_name = utils.log_error("second step login", response.text)
+                error = 500
 
         # If user denies prompt login.
-        if resp_page and "you canceled it" in resp_page.text:
-            error = "Prompt Denied"
+        elif "you canceled it" in response.text:
+            error = 412
 
-    return resp_page, error, session
+        # if too many wrong attempts made
+        elif "Unavailable because of too many failed attempts" in response.text:
+            methods, url, error, session = login_utils.select_alternate_method(session,
+                                                                               response.url)
+
+            if not error:
+                response = {'methods': methods, 'url': url}
+                error = 503
+
+        # TODO: temporary solution, need to find a way to find when timeout occurs
+        elif url_auth == response.url or base_url_login in response.url:
+            error = 408
+
+        # fall back to default method
+        elif "signin/challenge" in response.url:
+            error = 502
+
+        else:
+            file_name = utils.log_error("second step login", response.text)
+            error = 500
+
+    return response, error, session
