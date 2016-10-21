@@ -175,7 +175,7 @@ def two_step_login_with_backup_code(session, payload, url_to_challenge_signin, c
 
 def second_step_login(session, method, url, payload, query_params, otp):
     '''
-    Calls appropriate funtions based upon the two factor method.
+    Calls appropriate functions based upon the two factor method.
     '''
 
     # TODO: shift these to config file

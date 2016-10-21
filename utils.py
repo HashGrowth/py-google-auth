@@ -168,7 +168,8 @@ def log_error(step, content):
     '''
     This function logs a page for error.
     It is called whenever an unhandled exception will occur.
-    `step`: The step in login process, it cold be normal_login, step_two_login or select_alternate.
+    `step`: The step in login process, it could be normal_login, step_two_login or
+    select_alternate.
             It makes it easy to identify the file in logs.
     `content`: content to log.
     '''
