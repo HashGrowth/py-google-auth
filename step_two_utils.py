@@ -53,11 +53,14 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # convert response to json.
     reply_json = json.loads(reply_from_user.content.decode('utf-8'))
 
-    # if request was not appropriate, log the response for further debugging.
-    if 'error' in reply_json and reply_json['error']['code'] == 500:
-        # log the error
-        file_name = utils.log_error("second step login", reply_json)
+    # if request payload was not json encoded.
+    if 'error' in reply_json and reply_json['error']['code'] == 400:
         error = 500
+        file_name = utils.log_error("second step login", json.dumps(reply_json))
+
+    # if user does not respond for prompt; time out error
+    if 'error' in reply_json and reply_json['error']['code'] == 500:
+        error = 408
         return reply_json, error, session
 
     try:
