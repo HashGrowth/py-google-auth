@@ -10,6 +10,66 @@ from . import login_utils
 log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
+def handle_prompt_error(response):
+    '''
+    This function checks for errors (if any) while using google prompt method for login.
+    '''
+    if "Sign-in canceled" in response.text:
+        error = 412
+
+    else:
+        file_name = utils.log_error("google prompt", response.text)
+        error = 500
+
+    return error
+
+
+def handle_otp_error(response, session):
+    '''
+    This function checks for errors (if any) while using google authenticator method for login.
+    '''
+
+    # TODO: shift these to config file
+    base_url_login = "https://accounts.google.com/ServiceLogin?"
+    url_auth = "https://accounts.google.com/ServiceLoginAuth?service=androiddeveloper"
+
+    error = utils.scrap_error(response.text)
+
+    if error and ("Wrong" in error or "Enter a code" in error):
+        error = 406
+
+    elif "Unavailable because of too many failed attempts" in response.text:
+        methods, url, error, session = login_utils.select_alternate_method(session,
+                                                                           response.url)
+
+        if not error:
+            response = {'methods': methods, 'url': url}
+            error = 503
+
+    elif "Resend code" in response.text:
+        # sending 3 as the method code for sms otp is 3
+        payload = utils.make_payload(response.text)
+
+        # save payload so as to make request to resend otp if required
+        session.resend_payload = payload
+        session.resend_url = response.url
+
+        error = 506
+
+    elif "bc" in response.url:
+        error = 502
+
+    # TODO: temporary solution, need to find a way to find when timeout occurs
+    elif url_auth == response.url or base_url_login in response.url:
+        error = 408
+
+    else:
+        file_name = utils.log_error("otp", response.text)
+        error = 500
+
+    return response, error, session
+
+
 def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_signin):
     '''
     Method for two step authentication with Google prompt.
@@ -53,11 +113,14 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # convert response to json.
     reply_json = json.loads(reply_from_user.content.decode('utf-8'))
 
-    # if request was not appropriate, log the response for further debugging.
-    if 'error' in reply_json and reply_json['error']['code'] == 500:
-        # log the error
-        file_name = utils.log_error("second step login", reply_json)
+    # if request payload was not json encoded.
+    if 'error' in reply_json and reply_json['error']['code'] == 400:
         error = 500
+        file_name = utils.log_error("second step login", json.dumps(reply_json))
+
+    # if user does not respond for prompt; time out error
+    if 'error' in reply_json and reply_json['error']['code'] == 500:
+        error = 408
         return reply_json, error, session
 
     try:
@@ -178,10 +241,6 @@ def second_step_login(session, method, url, payload, query_params, otp):
     Calls appropriate functions based upon the two factor method.
     '''
 
-    # TODO: shift these to config file
-    base_url_login = "https://accounts.google.com/ServiceLogin?"
-    url_auth = "https://accounts.google.com/ServiceLoginAuth?service=androiddeveloper"
-
     error = None
 
     # the url to make POST request to send otp to user
@@ -192,68 +251,47 @@ def second_step_login(session, method, url, payload, query_params, otp):
         response, error, session = two_step_login_with_prompt(session, payload, query_params,
                                                               url_to_challenge_signin)
 
-        # if user does not respond for prompt; time out error
-        if isinstance(response, dict) and response['error']['code'] == 500:
-            return response, 408, session
+        cookies = session.cookies
+
+        # if login was not successful, appropriate cookies will not get set
+        if not error and len(cookies) < 7:
+            error = handle_prompt_error(response)
 
     # login with Google Authenticator
     elif method == 2:
         response, error, session = two_step_login_with_authenticator(session, payload,
                                                                      url_to_challenge_signin, otp)
 
+        cookies = session.cookies
+
+        # if login was not successful, appropriate cookies will not get set
+        if not error and len(cookies) < 7:
+            response, error, session = handle_otp_error(response, session)
+
     # login with text msg
     elif method == 3:
         response, error, session = two_step_login_with_text_msg(session, payload,
                                                                 url_to_challenge_signin, otp)
+        cookies = session.cookies
+
+        # if login was not successful, appropriate cookies will not get set
+        if not error and len(cookies) < 7:
+            response, error, session = handle_otp_error(response, session)
 
     # login with backup code
     elif method == 4:
         response, error, session = two_step_login_with_backup_code(session, payload,
                                                                    url_to_challenge_signin, otp)
 
+        cookies = session.cookies
+
+        # if login was not successful, appropriate cookies will not get set
+        if not error and len(cookies) < 7:
+            response, error, session = handle_otp_error(response, session)
+
     # if input method didn't match
     else:
         error = 400
         return None, error, session
-
-    set_cookies = session.cookies
-
-    # if login was not succesful, there might be some error
-    if not error and len(set_cookies) < 7:
-        # log the page
-        error = utils.scrap_error(response.text)
-
-        if error:
-            if "Wrong" in error or "Enter a code" in error:
-                error = 406
-
-            else:
-                file_name = utils.log_error("second step login", response.text)
-                error = 500
-
-        # If user denies prompt login.
-        elif "you canceled it" in response.text:
-            error = 412
-
-        # if too many wrong attempts made
-        elif "Unavailable because of too many failed attempts" in response.text:
-            methods, url, error, session = login_utils.select_alternate_method(session,
-                                                                               response.url)
-
-            if not error:
-                response = {'methods': methods, 'url': url}
-                error = 503
-
-        # TODO: temporary solution, need to find a way to find when timeout occurs
-        elif url_auth == response.url or base_url_login in response.url:
-            error = 408
-
-        # fall back to default method
-        elif "signin/challenge" in response.url:
-            error = 502
-
-        else:
-            file_name = utils.log_error("second step login", response.text)
-            error = 500
 
     return response, error, session
