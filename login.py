@@ -268,6 +268,11 @@ class StepTwoLogin(object):
                 response_data['default_method'] = default_method
                 resp.status = falcon.HTTP_502
 
+            elif error == 506:
+                # using this way because no falcon status codes suits the purpose.
+                resp.status = "506"
+                session = utils.serialize_session(session)
+
             else:
                 resp.status = falcon.HTTP_500
 
@@ -277,7 +282,7 @@ class StepTwoLogin(object):
         # 502 and 503 shows that too many attempts with wrong otp were made, so in this case we
         # either fall back to default method or provide a list of methods to select from (when
         # default is blocked)
-        if error != 503 or error != 502:
+        if error != 503 and error != 502:
             session = jsonpickle.encode(session)
 
         response_data['session'] = session
