@@ -37,7 +37,8 @@ def clean_session(session):
     This method removes those extra attributes.
     '''
 
-    attrs = ['next_url', 'q_params', 'select_method_url', 'prev_payload']
+    attrs = ['next_url', 'q_params', 'select_method_url', 'prev_payload', 'resend_url',
+             'resend_payload']
     for attr in attrs:
         if attr in session.__dict__:
             session.__delattr__(attr)

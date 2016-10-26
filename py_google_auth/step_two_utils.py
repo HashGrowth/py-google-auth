@@ -47,7 +47,6 @@ def handle_otp_error(response, session):
             error = 503
 
     elif "Resend code" in response.text:
-        # sending 3 as the method code for sms otp is 3
         payload = utils.make_payload(response.text)
 
         # save payload so as to make request to resend otp if required
@@ -293,5 +292,31 @@ def second_step_login(session, method, url, payload, query_params, otp):
     else:
         error = 400
         return None, error, session
+
+    return response, error, session
+
+
+def resend_code(session, method, url, payload):
+    '''
+    Function to resend otp/prompt.
+    `url`: url to which the POST request is to be made to resend otp code.
+    `payload`: payload to be sent for request.
+    '''
+    error = None
+
+    if method == 1:
+        payload['action'] = 'SEND'
+
+    try:
+        response = session.post(url, data=payload)
+
+    except(requests.exceptions.ConnectionError):
+        error = 504
+        response = None
+
+    except:
+        file_name = utils.log_error("resend code", response.text)
+        error = 500
+        response = None
 
     return response, error, session

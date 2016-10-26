@@ -71,6 +71,17 @@ def validate_request(req, resp, resource, params):
     req.stream = data
 
 
+def verify_session_exist(req, resp, resource, params):
+    '''
+    Decorator to check if a session object is sent with request,
+    this is necessary for all api calls after normal login has been done.
+    '''
+    data = req.stream
+    if 'session' not in data:
+        msg = 'Please send the session string received from previous request.'
+        raise falcon.HTTPBadRequest('Session Required', msg)
+
+
 @falcon.before(verify_data_exist)
 @falcon.before(validate_request)
 @falcon.before(verify_credentials)
@@ -184,6 +195,7 @@ class NormalLogin(object):
 
 @falcon.before(verify_data_exist)
 @falcon.before(validate_request)
+@falcon.before(verify_session_exist)
 class StepTwoLogin(object):
     '''
     Handles two factor authentication.
@@ -282,7 +294,7 @@ class StepTwoLogin(object):
         # 502 and 503 shows that too many attempts with wrong otp were made, so in this case we
         # either fall back to default method or provide a list of methods to select from (when
         # default is blocked)
-        if error != 503 and error != 502:
+        if error not in [503, 502, 506, 408]:
             session = jsonpickle.encode(session)
 
         response_data['session'] = session
@@ -291,6 +303,7 @@ class StepTwoLogin(object):
 
 @falcon.before(verify_data_exist)
 @falcon.before(validate_request)
+@falcon.before(verify_session_exist)
 class ChangeMethod(object):
     '''
     Handle changing the two factor method.
@@ -320,7 +333,7 @@ class ChangeMethod(object):
         response, error, session = change_method_utils.get_alternate_method(session, method,
                                                                             select_method_url)
         # data to send back
-        data = {}
+        response_data = {}
 
         if error:
             if error == 504:
@@ -337,7 +350,7 @@ class ChangeMethod(object):
             # if method is text message, extract the phone number from it.
             if "text message" in method:
                 phone_num = change_method_utils.extract_phone_num(method)
-                data['number'] = phone_num
+                response_data['number'] = phone_num
 
             # get the method code, this is done so that the api user can get the method code to
             # send back in the next call to step two end point.
@@ -350,13 +363,66 @@ class ChangeMethod(object):
             session.next_url = response.url
             session.prev_payload = payload
 
-            data['method'] = method
+            response_data['method'] = method
 
             resp.status = falcon.HTTP_200
 
         # encode session as json; need to call the serialize function because again extra variables
         # are being stuffed in the session.
         session = utils.serialize_session(session)
-        data['session'] = session
+        response_data['session'] = session
 
-        resp.body = json.dumps(data)
+        resp.body = json.dumps(response_data)
+
+
+@falcon.before(verify_data_exist)
+@falcon.before(validate_request)
+@falcon.before(verify_session_exist)
+class ResendCode(object):
+    '''
+    Handles resend otp/code for two step authentication.
+    '''
+    def on_post(self, req, resp):
+
+        # set in the decorator method for request validation.
+        data = req.stream
+
+        # extract required parameters from the data.
+        method = data['method']
+        session = data['session']
+
+        # deserialize session into an object from the string.
+        session = utils.deserialize_session(session)
+
+        # extract other variables that were stuffed in previous call to the API.
+        url_to_post = session.resend_url
+        payload = session.resend_payload
+
+        # remove the variables from the session object so as to make it a normal requests.Session
+        # object.
+        session = utils.clean_session(session)
+
+        response, error, session = step_two_utils.resend_code(session, method,
+                                                              url_to_post, payload)
+
+        if error:
+            if error == 504:
+                resp.status = falcon.HTTP_504
+
+            else:
+                resp.status = falcon.HTTP_500
+        else:
+            # data to send back
+            response_data = {}
+
+            session.next_url = response.url
+            payload = utils.make_payload(response.text)
+            session.prev_payload = payload
+
+            # encode session as json; need to call the serialize function because again extra
+            # variables are being stuffed in the session.
+            session = utils.serialize_session(session)
+            response_data['session'] = session
+
+            resp.status = falcon.HTTP_200
+            resp.body = json.dumps(response_data)
