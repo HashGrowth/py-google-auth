@@ -55,5 +55,5 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         ),
     keywords='google login auth',
-    entry_points={'console_scripts': ['py_google_auth = py_google_auth:main']},
+    entry_points={'console_scripts': ['py-google-auth=py_google_auth:main']},
 )

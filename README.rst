@@ -58,9 +58,9 @@ Open your terminal and run:
 
 .. code-block:: bash
 
-    py_google_auth
+    py-google-auth
 
-This will start a gunicorn server, which will listen on ``localhost:8001`` by default. You can change host and port (run ``py_google_auth -h`` for information).
+This will start a gunicorn server, which will listen on ``localhost:8001`` by default. You can change host and port (run ``py-google-auth -h`` for information).
 
 Then you can make calls to the api using any HTTP library you like.
 The `docs <http://py-google-auth.readthedocs.io/en/latest/>`_ will contain examples with `requests <https://github.com/kennethreitz/requests>`_.
