@@ -173,7 +173,7 @@ def log_error(step, content):
             It makes it easy to identify the file in logs.
     `content`: content to log.
     '''
-    file_name = step + ": " + time.strftime("%d-%m-%Y %H:%M:%S") + ".html"
+    file_name = step + "- " + time.strftime("%d-%m-%Y %H-%M-%S") + ".html"
     f = open(log_dir+file_name, 'w')
     f.write(content)
     f.close()
