@@ -1,11 +1,26 @@
-import os
 import jsonpickle
+import logging
+import os
 import requests
 import time
 
 from bs4 import BeautifulSoup
 
-log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
+# directory path for storing log files in case of unhandled cases.
+try:
+    log_dir = os.environ['PY_GOOGLE_AUTH_LOG_PATH']
+except:
+    system_user = os.environ['USER']
+    dir_ = "/home/" + system_user + "/logs/py_google_auth"
+
+    if not os.path.isdir(dir_):
+        os.makedirs(dir_)
+
+    log_dir = dir_ + "/"
+    logging.warning("You have not set a path for error logging, using " + dir_)
+else:
+    if not log_dir.endswith("/"):
+        log_dir = log_dir + "/"
 
 
 def serialize_session(session):

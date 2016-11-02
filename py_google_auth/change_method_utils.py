@@ -1,12 +1,8 @@
-import os
 import requests
 
 from bs4 import BeautifulSoup
 
 from . import utils
-
-# directory path for storing log files in case of unhandled cases.
-log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
 def get_payload_for_select_page(form_html, form_key):
