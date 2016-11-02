@@ -1,5 +1,6 @@
-import os
 import jsonpickle
+import os
+import platform
 import requests
 import time
 
@@ -104,10 +105,14 @@ def get_available_methods(page):
             available_methods.append(item.text)
 
     except:
-        file_name = log_error("select alternate", page)
+        file_name, hostname = log_error("select alternate", page)
         error = 500
+        response = {'file_name': file_name, 'hostname': hostname}
 
-    return available_methods, error
+    else:
+        response = {'available_methods': available_methods}
+
+    return response, error
 
 
 def get_query_params(page):
@@ -132,7 +137,7 @@ def get_query_params(page):
 
     except:
         # log exception
-        file_name = log_error("second step login", page)
+        file_name, hostname = log_error("second step login", page)
         data = {}
 
     return data
@@ -178,7 +183,10 @@ def log_error(step, content):
     f.write(content)
     f.close()
 
-    return file_name
+    # hostname of the machine where the py-google-auth is running
+    hostname = platform.node()
+
+    return file_name, hostname
 
 
 def handle_default_method(default_method, response, session):

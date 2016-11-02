@@ -18,10 +18,11 @@ def handle_prompt_error(response):
         error = 412
 
     else:
-        file_name = utils.log_error("google prompt", response.text)
+        file_name, hostname = utils.log_error("google prompt", response.text)
         error = 500
+        response = {'file_name': file_name, 'hostname': hostname}
 
-    return error
+    return response, error
 
 
 def handle_otp_error(response, session):
@@ -39,10 +40,12 @@ def handle_otp_error(response, session):
         error = 406
 
     elif "Unavailable because of too many failed attempts" in response.text:
-        methods, url, error, session = login_utils.select_alternate_method(session,
+        response, error, session = login_utils.select_alternate_method(session,
                                                                            response.url)
 
         if not error:
+            methods = response['methods']
+            url = response['select_method_url']
             response = {'methods': methods, 'url': url}
             error = 503
 
@@ -64,8 +67,9 @@ def handle_otp_error(response, session):
         error = 408
 
     else:
-        file_name = utils.log_error("otp", response.text)
+        file_name, hostname = utils.log_error("otp", response.text)
         error = 500
+        response = {'file_name': file_name, 'hostname': hostname}
 
     return response, error, session
 
@@ -116,7 +120,8 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
     # if request payload was not json encoded.
     if 'error' in reply_json and reply_json['error']['code'] == 400:
         error = 500
-        file_name = utils.log_error("second step login", json.dumps(reply_json))
+        file_name, hostname = utils.log_error("second step login", json.dumps(reply_json))
+        response = {'file_name': file_name, 'hostname': hostname}
 
     # if user does not respond for prompt; time out error
     if 'error' in reply_json and reply_json['error']['code'] == 500:
@@ -134,9 +139,10 @@ def two_step_login_with_prompt(session, payload, query_params, url_to_challenge_
 
     except:
         # if there is some problem with payload, log the content of response to debug
-        file_name = utils.log_error("second step login", reply_from_user.text)
+        file_name, hostname = utils.log_error("second step login", reply_from_user.text)
         error = 500
-        return reply_from_user, error, session
+        response = {'file_name': file_name, 'hostname': hostname}
+        return response, error, session
 
     try:
         # make final call to sign in
@@ -198,9 +204,10 @@ def two_step_login_with_text_msg(session, payload, url_to_challenge_signin, otp)
         # again.
         payload.pop('SendMethod')
     except:
-        file_name = utils.log_error("second step login", payload)
+        file_name, hostname = utils.log_error("second step login", payload)
         error = 500
-        return None, error, session
+        response = {'file_name': file_name, 'hostname': hostname}
+        return response, error, session
 
     try:
         resp_page = session.post(url_to_challenge_signin, data=payload)
@@ -255,7 +262,7 @@ def second_step_login(session, method, url, payload, query_params, otp):
 
         # if login was not successful, appropriate cookies will not get set
         if not error and len(cookies) < 7:
-            error = handle_prompt_error(response)
+            response, error = handle_prompt_error(response)
 
     # login with Google Authenticator
     elif method == 2:

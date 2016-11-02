@@ -66,10 +66,11 @@ def get_alternate_method(session, method, select_challenge_url):
         return None, error, session
 
     # available methods on a user's account
-    available_methods, error = utils.get_available_methods(form_html.text)
+    response, error = utils.get_available_methods(form_html.text)
 
     if not error:
         try:
+            available_methods = response['available_methods']
             # map protocol and selection according to selected method using the methods dictionary
             selection = available_methods.index(method)
             protocol = [methods[item][1] for item in methods if methods[item][0] in method][0]
@@ -92,9 +93,10 @@ def get_alternate_method(session, method, select_challenge_url):
         challengeId = payload['challengeId']
 
     except:
-        file_name = utils.log_error("select alternate", form_html.text)
+        file_name, hostname = utils.log_error("select alternate", form_html.text)
         error = 500
-        return form_html, error, session
+        response = {'file_name': file_name, 'hostname': hostname}
+        return response, error, session
 
     # join the base url, protocol and challengeId to form the POST url
     next_challenge_post_url = url_to_challenge_signin + protocol + "/" + challengeId
