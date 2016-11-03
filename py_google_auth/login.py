@@ -93,10 +93,10 @@ class NormalLogin(object):
         if error and error == 303:
 
             # find the default tfa method
-            default_method, method_error = login_utils.get_default_method(response.text)
+            response_default, error_default = login_utils.get_default_method(response.text)
 
             # collect all enabled methods on a user's google account.
-            methods, select_method_url, error, session = login_utils.select_alternate_method(
+            response_alternate, error_alternate, session = login_utils.select_alternate_method(
                 session, response.url)
 
             response_data = {}
@@ -105,11 +105,15 @@ class NormalLogin(object):
             # occured in making requests or format of the response page has changed then respond
             # with a 500 to indicate that the request can't be fulfilled. Requires updates in API
             # implementation.
-            if method_error and error:
+            if error_default and error_alternate:
                 resp.status = falcon.HTTP_500
+                resp.body = json.dumps(response_default)
 
             # if available methods not fetched; return default_method only
-            elif error:
+            elif error_alternate:
+                # from get_default_method response, we extract default method
+                default_method = response_default['method']
+
                 # set variables in session and prepare response using a utility method
                 response_data, session = utils.handle_default_method(default_method,
                                                                      response, session)
@@ -122,7 +126,9 @@ class NormalLogin(object):
                 resp.body = json.dumps(response_data)
 
             # if default method not available; return all enabled methods
-            elif method_error:
+            elif error_default:
+                select_method_url = response_alternate['select_method_url']
+                methods = response_alternate['methods']
 
                 # save url to select methods, this is used to again get the form of method
                 # selection which will in turn give appropriate payload for selected method
@@ -139,6 +145,13 @@ class NormalLogin(object):
 
             else:
                 # if both default method and available methods fetched
+
+                # from get_default_method response, we extract default method
+                default_method = response_default['method']
+
+                select_method_url = response_alternate['select_method_url']
+                methods = response_alternate['methods']
+
                 response_data, session = utils.handle_default_method(default_method,
                                                                      response, session)
 
@@ -170,6 +183,7 @@ class NormalLogin(object):
         # Any other error indicates that API needs update in its implementation.
         elif error:
             resp.status = falcon.HTTP_500
+            resp.body = json.dumps(response)
 
         else:
             # encode session as json; this is different from the encoding process used above when
@@ -275,6 +289,7 @@ class StepTwoLogin(object):
 
             else:
                 resp.status = falcon.HTTP_500
+                response_data = response
 
         else:
             resp.status = falcon.HTTP_200
@@ -320,7 +335,7 @@ class ChangeMethod(object):
         response, error, session = change_method_utils.get_alternate_method(session, method,
                                                                             select_method_url)
         # data to send back
-        data = {}
+        response_data = {}
 
         if error:
             if error == 504:
@@ -332,12 +347,13 @@ class ChangeMethod(object):
 
             else:
                 resp.status = falcon.HTTP_500
+                response_data = response
 
         else:
             # if method is text message, extract the phone number from it.
             if "text message" in method:
                 phone_num = change_method_utils.extract_phone_num(method)
-                data['number'] = phone_num
+                response_data['number'] = phone_num
 
             # get the method code, this is done so that the api user can get the method code to
             # send back in the next call to step two end point.
@@ -350,13 +366,13 @@ class ChangeMethod(object):
             session.next_url = response.url
             session.prev_payload = payload
 
-            data['method'] = method
+            response_data['method'] = method
 
             resp.status = falcon.HTTP_200
 
         # encode session as json; need to call the serialize function because again extra variables
         # are being stuffed in the session.
         session = utils.serialize_session(session)
-        data['session'] = session
+        response_data['session'] = session
 
-        resp.body = json.dumps(data)
+        resp.body = json.dumps(response_data)

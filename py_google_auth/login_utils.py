@@ -58,16 +58,17 @@ def select_alternate_method(session, current_form_page_url):
 
     except(requests.exceptions.ConnectionError):
         error = 504
-        return None, None, error, session
+        return None, error, session
 
     payload = utils.make_payload(form_html.text)
 
     # if the page did not have the form it won't have payload, that shows the response page has
     # changed or the request was not appropriate.
     if not payload:
-        file_name = utils.log_error("select alternate", form_html.text)
+        file_name, hostname = utils.log_error("select alternate", form_html.text)
         error = 500
-        return None, None, error, session
+        response = {'file_name': file_name, 'hostname': hostname}
+        return response, error, session
 
     try:
         # this will return the select challenge url and necessary parameters
@@ -75,7 +76,7 @@ def select_alternate_method(session, current_form_page_url):
 
     except(requests.exceptions.ConnectionError):
         error = 504
-        return None, None, error, session
+        return None, error, session
 
     try:
         # get the page where all enabled method are listed for selection
@@ -83,19 +84,23 @@ def select_alternate_method(session, current_form_page_url):
 
     except(requests.exceptions.ConnectionError):
         error = 504
-        return None, None, error, session
+        return None, error, session
 
     # check whether page contains list of methods
     error = check_response(login_html.text)
 
     if error:
-        file_name = utils.log_error("select alternate", login_html.text)
-        return None, None, error, session
+        file_name, hostname = utils.log_error("select alternate", login_html.text)
+        response = {'file_name': file_name, 'hostname': hostname}
+        return response, error, session
 
     # find all the available methods from the response page.
-    available_methods, error = utils.get_available_methods(login_html.text)
+    response, error = utils.get_available_methods(login_html.text)
+    available_methods = response['available_methods']
 
-    return available_methods, select_method_page.url, error, session
+    response = {'methods': available_methods, 'select_method_url': select_method_page.url}
+
+    return response, error, session
 
 
 def get_default_method(resp_page):
@@ -120,6 +125,7 @@ def get_default_method(resp_page):
 
     if "prompt to sign in" in resp_page:
         method = 1
+        response = {'method': method}
 
     else:
         try:
@@ -129,11 +135,13 @@ def get_default_method(resp_page):
             method = [m for m in methods if methods[m][0] in resp_page][0]
 
         except:
-            file_name = utils.log_error("second step login", resp_page)
-            method = None
+            file_name, hostname = utils.log_error("second step login", resp_page)
             error = 500
+            response = {'file_name': file_name, 'hostname': hostname}
+        else:
+            response = {'method': method}
 
-    return method, error
+    return response, error
 
 
 def normal_login(session, username, password, continue_url):
@@ -166,9 +174,10 @@ def normal_login(session, username, password, continue_url):
     # if the page did not have the form it won't have payload, that shows the response page has
     # changed or the request was not appropriate.
     if not payload:
-        file_name = utils.log_error("normal login", form_html.text)
+        file_name, hostname = utils.log_error("normal login", form_html.text)
         error = 500
-        return form_html, error, session
+        response = {'file_name': file_name, 'hostname': hostname}
+        return response, error, session
 
     # add email, password and target url in payload
     payload['Email'] = username
@@ -176,40 +185,38 @@ def normal_login(session, username, password, continue_url):
     payload['continue'] = continue_url
 
     try:
-        resp_page = session.post(url_auth, data=payload)
+        response = session.post(url_auth, data=payload)
 
     except(requests.exceptions.ConnectionError):
-        resp_page = None
+        response = None
         error = 504
 
     set_cookies = session.cookies
 
     if len(set_cookies) < 7:
 
-        file_name = utils.log_error("normal login", form_html.text)
-        error = 500
-
-        if ("Google doesn't recognize that email" in resp_page.text or
-           "Wrong password" in resp_page.text):
+        if ("Google doesn't recognize that email" in response.text or
+           "Wrong password" in response.text):
             error = 401
-            return resp_page, error, session
+            return response, error, session
 
         # TODO: use some more specific text to identify captcha.
         # if captcha occured
-        if "captcha" in resp_page.text:
+        if "captcha" in response.text:
             error = 429
-            return resp_page, error, session
+            return response, error, session
 
         # if TFA was enabled
-        if "signin/challenge" in resp_page.url:
+        if "signin/challenge" in response.url:
             error = 303
-            return resp_page, error, session
+            return response, error, session
 
         else:
-            file_name = utils.log_error("normal login", resp_page.text)
+            file_name, hostname = utils.log_error("normal login", response.text)
             error = 500
+            response = {'file_name': file_name, 'hostname': hostname}
 
-    return resp_page, error, session
+    return response, error, session
 
 
 def login(username, password):
@@ -224,6 +231,6 @@ def login(username, password):
     play_console_base_url = "https://play.google.com/apps/publish"
 
     # login normally
-    resp_page, error, session = normal_login(session, username, password, play_console_base_url)
+    response, error, session = normal_login(session, username, password, play_console_base_url)
 
-    return resp_page, error, session
+    return response, error, session
