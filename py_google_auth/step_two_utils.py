@@ -1,13 +1,9 @@
 import json
-import os
 import requests
 
 
 from . import utils
 from . import login_utils
-
-# directory path for storing log files in case of unhandled cases.
-log_dir = os.environ.get('PY_GOOGLE_AUTH_LOG_PATH')
 
 
 def handle_prompt_error(response):
