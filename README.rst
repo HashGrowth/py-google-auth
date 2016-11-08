@@ -1,6 +1,10 @@
 py-google-auth
 ==============
 
+.. image:: https://badges.gitter.im/HashGrowth/py-google-auth.svg
+   :alt: Join the chat at https://gitter.im/HashGrowth/py-google-auth
+   :target: https://gitter.im/HashGrowth/py-google-auth?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
+
 Headless implementation of Google web login (with support for 2-Step Verification) in Python
 
 `py-google-auth` exposes a high-level Python module and REST API that can be used for headless login on `Google Accounts <https://accounts.google.com/ServiceLogin>`_. The API supports *2-step verification* if it is enabled on Google Account being used.
