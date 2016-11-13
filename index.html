@@ -1,0 +1,214 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Py-google-auth by HashGrowth</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-dark.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/main.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+
+      <header>
+        <h1>Py-google-auth</h1>
+        <p>Headless implementation of Google web login (with support for 2-Step Verification) in Python</p>
+      </header>
+
+      <div id="banner">
+        <span id="logo"></span>
+
+        <a href="https://github.com/HashGrowth/py-google-auth" class="button fork"><strong>View On GitHub</strong></a>
+        <div class="downloads">
+          <span>Downloads:</span>
+          <ul>
+            <li><a href="https://github.com/HashGrowth/py-google-auth/zipball/master" class="button">ZIP</a></li>
+            <li><a href="https://github.com/HashGrowth/py-google-auth/tarball/master" class="button">TAR</a></li>
+          </ul>
+        </div>
+      </div><!-- end banner -->
+
+    <div class="wrapper">
+      <nav>
+        <ul></ul>
+      </nav>
+      <section>
+        <h1>
+<a id="py-google-auth" class="anchor" href="#py-google-auth" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>py-google-auth</h1>
+
+<p><a href="https://gitter.im/HashGrowth/py-google-auth?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://badges.gitter.im/HashGrowth/py-google-auth.svg" alt="Join the chat at https://gitter.im/HashGrowth/py-google-auth"></a></p>
+
+<p>Headless implementation of Google web login (with support for 2-Step Verification) in Python</p>
+
+<p><code>py-google-auth</code> exposes a high-level Python module and REST API that can be used for headless login on <a href="https://accounts.google.com/ServiceLogin">Google Accounts</a>. The API supports <em>2-step verification</em> if it is enabled on Google Account being used.</p>
+
+<p><strong>Note</strong>: This project is in "alpha" version right now.
+We are actively developing it and expect it to be beta-ready in next couple of weeks.</p>
+
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
+
+<p>MIT</p>
+
+<p>The license text is available in <code>LICENSE</code> file in root of this repo.</p>
+
+<h2>
+<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Installation</h2>
+
+<p>To install, run:    </p>
+
+<pre><code>$ pip install py-google-auth
+</code></pre>
+
+<p>(for test):    </p>
+
+<pre><code>$ pip install -i https://testpypi.python.org/pypi --extra-index-url https://pypi.python.org/pypi py-google-auth
+</code></pre>
+
+<p>to update the version:    </p>
+
+<pre><code>$ pip install -Ui https://testpypi.python.org/pypi --extra-index-url https://pypi.python.org/pypi py-google-auth
+</code></pre>
+
+<p>To be able to make requests to API, you will need a token.
+You need to set it in your system environment for the API to access it and then pass it with every request you make:    </p>
+
+<pre><code>export PY_GOOGLE_AUTH_TOKEN='some_token'
+</code></pre>
+
+<p>Also set a path for storing log files.
+These files will be created when ever some previously unhandled error will occur,
+in order to help debugging and fixing the problem. You can create a PR for such errors with the content of the file from your log path:    </p>
+
+<pre><code>export PY_GOOGLE_AUTH_LOG_PATH=/path/to/logs/
+</code></pre>
+
+<h2>
+<a id="usage" class="anchor" href="#usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>Open your terminal and run:    </p>
+
+<pre><code>py-google-auth
+</code></pre>
+
+<p>This will start a gunicorn server, which will listen on <code>localhost:8001</code> by default. You can change host and port (run <code>py-google-auth -h</code> for information).</p>
+
+<p>Then you can make calls to the api using any HTTP library you like.
+The <a href="http://py-google-auth.readthedocs.io/en/latest/">docs</a> will contain examples with <a href="https://github.com/kennethreitz/requests">requests</a>.</p>
+
+<p>Example for an account without two factor auth enabled:    </p>
+
+<pre><code>&gt;&gt;&gt; import jsonpickle
+&gt;&gt;&gt; import os
+&gt;&gt;&gt; import requests
+
+&gt;&gt;&gt; token = os.environ.get('PY_GOOGLE_AUTH_TOKEN')
+&gt;&gt;&gt; data = {'email': 'myemail@example.com', 'password': 'myrandompassword', 'token': token}
+
+&gt;&gt;&gt; req = requests.post('http://localhost:8001/login', json=data)
+&gt;&gt;&gt; req
+&lt;Respose 200&gt;
+
+&gt;&gt;&gt; session_str = req.json()['session']
+&gt;&gt;&gt; session = jsonpickle.decode(session_str)
+&gt;&gt;&gt; google_play_page = session.get('https://play.google.com/apps/publish')
+&gt;&gt;&gt; google_play_page
+&lt;Respose 200&gt;
+</code></pre>
+
+<p><em>Note:</em> <code>jsonpickle</code> is used to encode python objects into json, since we get an encoded string which contains a request.Session object, we need to use decode to make it an object again.</p>
+
+<p>More examples with other endpoints can be found in <a href="http://py-google-auth.readthedocs.io/en/latest/">docs</a>.</p>
+
+<h2>
+<a id="end-points" class="anchor" href="#end-points" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>End points</h2>
+
+<p>Normal login (without two factor auth).    </p>
+
+<pre><code>POST /login --data {'email': email, 'password': password, 'token': token}
+</code></pre>
+
+<p>If two factor auth is enabled, then next request should go here:    </p>
+
+<pre><code>POST /step_two_login --data {'session': session, 'method': method, 'otp': otp, 'token': token}
+</code></pre>
+
+<p>If you want to use alternate method for two factor, use this before <code>/step_two_login</code>:    </p>
+
+<pre><code>POST /change_method --data {'session': session, 'method': method, 'token': token}
+</code></pre>
+
+<p>Details about response data and status codes can be found in <a href="http://py-google-auth.readthedocs.io/en/latest/">docs</a>(writing soon).</p>
+
+<h2>
+<a id="supported-2-step-verification-steps" class="anchor" href="#supported-2-step-verification-steps" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Supported 2-step verification 'steps'</h2>
+
+<p>We support following 'steps' (i.e. methods) offered by Google in <a href="https://myaccount.google.com/security/signinoptions/two-step-verification">2-step verification</a>:</p>
+
+<ul>
+<li>
+<strong>Voice or text message</strong>: Verification codes are sent by text message.</li>
+<li>
+<strong>Backup codes</strong>: 10 single-use codes are active at this time, but you can generate more as needed.</li>
+<li>
+<strong>Google prompt</strong>: Get a Google prompt on your phone and just tap Yes to sign in.</li>
+<li>
+<strong>Authenticator app</strong>: Use the Authenticator app to get free verification codes, even when your phone is offline. Available for Android and iPhone.</li>
+<li>
+<strong>Backup phone</strong>: Add a backup phone so you can still sign in if you lose your phone.</li>
+</ul>
+
+<h2>
+<a id="unsupported-2-step-verification-step" class="anchor" href="#unsupported-2-step-verification-step" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Unsupported 2-step verification 'step'</h2>
+
+<p>We <strong>DONT</strong> support following 'step' (i.e. method):</p>
+
+<ul>
+<li>
+<strong>Security Key</strong>: A Security Key is a small physical device used for signing in. It plugs into your computer's USB port.</li>
+</ul>
+
+<h2>
+<a id="documentation" class="anchor" href="#documentation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Documentation</h2>
+
+<p>We are in process of writing documentation, which will be hosted at <a href="http://py-google-auth.readthedocs.io/en/latest/">http://py-google-auth.readthedocs.io/en/latest/</a>.</p>
+
+<h2>
+<a id="faqs" class="anchor" href="#faqs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>FAQs</h2>
+
+<p>To be done.</p>
+
+<h2>
+<a id="maintainerscontact" class="anchor" href="#maintainerscontact" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Maintainers/Contact</h2>
+
+<ul>
+<li>
+<a href="https://github.com/curioswati">Swati Jaiswal</a> (Current maintainer)</li>
+<li>If Swati isn't responding, feel free to poke <a href="https://github.com/amberj">Amber Jain</a> or <a href="https://github.com/pulkitvaishnav/">Pulkit Vaishnav</a>.</li>
+</ul>
+
+<h2>
+<a id="how-to-contribute" class="anchor" href="#how-to-contribute" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>How to Contribute</h2>
+
+<ol>
+<li>Check for <a href="https://github.com/HashGrowth/py-google-auth/issues">open issues or open a fresh issue</a> to start a discussion around a feature idea or a bug.</li>
+<li>Fork the repository on GitHub to start making your changes to the master branch (or branch off of it).</li>
+<li>Write a test which shows that the bug was fixed or that the feature works as expected.</li>
+<li>Send a pull request and poke the maintainer until it gets merged and published :)</li>
+</ol>
+      </section>
+      <footer>
+        <p>Project maintained by <a href="https://github.com/HashGrowth">HashGrowth</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
